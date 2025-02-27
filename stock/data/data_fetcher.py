@@ -25,7 +25,7 @@ class DataFetcher:
         pd.DataFrame: 包含股票数据的DataFrame
         """
         stock_data = yf.download(self.ticker, start=self.start_date, end=self.end_date)
-        print(stock_data)
+
         return stock_data
 
     def fetch_data_from_baostock(self):
@@ -67,5 +67,8 @@ class DataFetcher:
 
         # 登出baostock
         bs.logout()
+
+        # 确保 'close' 列是数值类型
+        data['close'] = pd.to_numeric(data['close'], errors='coerce')
 
         return data
