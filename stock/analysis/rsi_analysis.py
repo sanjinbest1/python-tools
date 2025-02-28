@@ -9,6 +9,7 @@ def analyze(stock):
 
     #计算RSI
     rsi_values = calculate_rsi_for_multiple_windows(stock.stock_data, stock.rsi_window_list)
+    print(rsi_values.to_string())
 
     #绘制图表
     plot_multiple_rsi(stock.stock_data, rsi_values, stock.rsi_window_list)
@@ -23,8 +24,9 @@ def analyze(stock):
 if __name__ == '__main__':
     ticker = 'sh.600570'  # 股票代码
     start_date = '2024-08-01'
-    end_date = '2025-02-26'
+    end_date = '2025-02-27'
     window_list = [7, 14, 28]
 
-    stock = StockAnalysis(ticker, start_date, end_date,window_list)
+    stock = StockAnalysis(ticker, start_date, end_date,rsi_window_list=window_list)
+    print(stock.stock_data.to_string())
     analyze(stock)

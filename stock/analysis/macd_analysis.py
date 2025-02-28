@@ -1,18 +1,22 @@
 from stock.data.stock_analysis import StockAnalysis
 from stock.indicator.macd import *
+from pprint import pprint
+
 def analyze(stock):
 
     # 计算MACD
     macd_dict = calculate_macd(stock.stock_data['close'],
                                fast_period=stock.fast_period, slow_period=stock.slow_period, signal_period=stock.signal_period)
 
+    pprint(macd_dict)
+
     # 生成操作建议
-    recommendation = generate_macd_signal(macd_dict['macd'], macd_dict['signal'], cost=cost)
+    recommendation = generate_macd_signal(macd_dict['macd'], macd_dict['signal'], cost=stock.cost)
     print(recommendation)
 
     # 绘制多个MACD图
-    plot_macd_with_signal(stock.stock_data['close'], macd_dict,
-                          fast_period=stock.fast_period, slow_period=stock.slow_period, signal_period=stock.signal_period)
+    # plot_macd_with_signal(stock.stock_data['close'], macd_dict,
+    #                       fast_period=stock.fast_period, slow_period=stock.slow_period, signal_period=stock.signal_period)
 
 
 # 示例：创建StockAnalysis对象并执行分析

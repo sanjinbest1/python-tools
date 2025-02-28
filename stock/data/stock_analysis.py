@@ -4,8 +4,8 @@ class StockAnalysis:
 
     def __init__(self, ticker, start_date, end_date, cost = None,
                  rsi_window_list=None,
-                 fast_period=5, slow_period=13, signal_period=5
-
+                 fast_period=5, slow_period=13, signal_period=5,
+                 bollinger_hands_window = 20,bollinger_hands_num_std=2
                  ):
         """
         初始化股票分析对象
@@ -28,6 +28,9 @@ class StockAnalysis:
         self.fast_period = fast_period
         self.slow_period = slow_period
         self.signal_period = signal_period
+
+        self.bollinger_hands_window = bollinger_hands_window
+        self.bollinger_hands_num_std = bollinger_hands_num_std
 
         # 数据获取器
         self.data_fetcher = DataFetcher(ticker, start_date, end_date)
