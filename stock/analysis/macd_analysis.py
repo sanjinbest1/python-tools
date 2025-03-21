@@ -12,7 +12,6 @@ def analyze(stock):
 
     # 生成操作建议
     recommendation = generate_macd_signal(macd_dict['macd'], macd_dict['signal'], cost=stock.cost)
-    print(recommendation)
 
     # 绘制多个MACD图
     # plot_macd_with_signal(stock.stock_data['close'], macd_dict,

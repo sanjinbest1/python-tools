@@ -3,7 +3,7 @@ from stock.data.data_fetcher import DataFetcher
 class StockAnalysis:
 
     def __init__(self, ticker, start_date, end_date, cost = None,
-                 rsi_window_list=None,
+                 rsi_window_list=[5],
                  fast_period=5, slow_period=13, signal_period=5,
                  bollinger_hands_window = 20,bollinger_hands_num_std=2
                  ):

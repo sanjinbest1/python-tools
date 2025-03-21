@@ -107,4 +107,4 @@ def plot_macd_with_signal(data, macd_dict, cost=None, fast_period=5, slow_period
 
     # 生成操作建议
     signal_advice = generate_macd_signal(macd_dict['macd'], macd_dict['signal'], cost=cost)
-    print(signal_advice)
+

@@ -40,8 +40,8 @@ def plot_multiple_rsi(stock_data, rsi_values, window_list):
         ax2.plot(rsi_values[window].index, rsi_values[window], label=f'RSI ({window}-day)', color=colors[i % len(colors)])
 
     # 添加超买和超卖参考线
-    ax2.axhline(y=70, color='r', linestyle='--', label='Overbought (70)')
-    ax2.axhline(y=30, color='g', linestyle='--', label='Oversold (30)')
+    ax2.axhline(y=75, color='r', linestyle='--', label='Overbought (75)')
+    ax2.axhline(y=25, color='g', linestyle='--', label='Oversold (25)')
     ax2.set_ylabel('RSI', color='orange')
     ax2.legend(loc='upper right')
 
@@ -64,13 +64,17 @@ def calculate_rsi(data, window=14):
     gain = delta.where(delta > 0, 0)
     loss = -delta.where(delta < 0, 0)
 
-    avg_gain = gain.rolling(window=window, min_periods=1).mean()
-    avg_loss = loss.rolling(window=window, min_periods=1).mean()
+    # **使用指数加权移动平均 (EMA)**
+    avg_gain = gain.ewm(span=window, adjust=False).mean()
+    avg_loss = loss.ewm(span=window, adjust=False).mean()
 
     rs = avg_gain / avg_loss
     rsi = 100 - (100 / (1 + rs))
 
-    return rsi
+    # **防止 avg_loss 为 0 导致 NaN**
+    rsi = np.where(avg_loss == 0, 100, rsi)
+
+    return pd.Series(rsi, index=data.index)
 
 def generate_operation_suggestion(rsi_values, window_list):
     """
@@ -86,8 +90,8 @@ def generate_operation_suggestion(rsi_values, window_list):
     """
     latest_rsi_values = {window: rsi_values[window].iloc[-1] for window in window_list}
 
-    overbought = 70
-    oversold = 30
+    overbought = 75
+    oversold = 25
 
     # 操作建议
     suggestions = []

@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-def calculate_bollinger_bands(data, window=20, num_std=2):
+def calculate_bollinger_bands(data, window=10, num_std=1.5):
     """
     计算布林带：中间线（SMA）、上轨线、下轨线
     :param data: 包含股票历史数据的DataFrame，要求至少有 'close' 列
@@ -32,23 +32,24 @@ def generate_bollinger_signals(data):
 
 def generate_bollinger_operations(df):
     """
-    根据布林带信号生成操作建议
+    根据布林带信号生成操作建议（中文版本）
     :param df: 包含布林带和信号的DataFrame
     :return: 操作建议（字符串）
     """
     latest_data = df.iloc[-1]  # 获取最新一条数据
 
     # 初始化操作建议
-    operation = "No action"
+    operation = "暂无操作建议"
 
     if latest_data['close'] < latest_data['Lower_Band']:
-        operation = "Buy: The price is below the lower Bollinger Band, suggesting a potential buying opportunity."
+        operation = "买入：当前价格低于布林带下轨，可能存在超卖，建议关注买入机会。"
     elif latest_data['close'] > latest_data['Upper_Band']:
-        operation = "Sell: The price is above the upper Bollinger Band, suggesting a potential selling opportunity."
+        operation = "卖出：当前价格高于布林带上轨，可能存在超买，建议关注卖出机会。"
     else:
-        operation = "Hold: The price is within the Bollinger Bands, suggesting no immediate action."
+        operation = "观望：当前价格位于布林带区间内，暂无明显买卖信号。"
 
     return operation
+
 
 
 def plot_bollinger_bands(data):
