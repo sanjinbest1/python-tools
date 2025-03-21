@@ -59,7 +59,6 @@ def plot_keltner_channel(stock_data, keltner_data):
     plt.tight_layout()
     plt.show()
 
-
 def generate_keltner_channel_operation_suggestion(keltner_data, stock_data):
     """
     根据 Keltner Channel 指标生成操作建议
@@ -76,8 +75,14 @@ def generate_keltner_channel_operation_suggestion(keltner_data, stock_data):
     latest_lower_band = keltner_data['Lower_Band'].iloc[-1]
 
     if latest_price > latest_upper_band:
-        return "股价高于 Keltner Channel 上轨，可能存在超买，建议考虑卖出或减仓。"
+        detailed_suggestion = "股价高于 Keltner Channel 上轨，可能存在超买，建议考虑卖出或减仓。"
+        simple_suggestion = "卖出"
     elif latest_price < latest_lower_band:
-        return "股价低于 Keltner Channel 下轨，可能存在超卖，建议考虑买入或加仓。"
+        detailed_suggestion = "股价低于 Keltner Channel 下轨，可能存在超卖，建议考虑买入或加仓。"
+        simple_suggestion = "买入"
     else:
-        return "股价在 Keltner Channel 区间内，建议观望或根据其他指标综合判断。"
+        detailed_suggestion = "股价在 Keltner Channel 区间内，建议观望或根据其他指标综合判断。"
+        simple_suggestion = "观望"
+
+    print(detailed_suggestion)
+    return simple_suggestion

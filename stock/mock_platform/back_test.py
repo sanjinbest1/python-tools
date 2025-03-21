@@ -1,98 +1,101 @@
+import tushare as ts
 import pandas as pd
 import matplotlib.pyplot as plt
+from datetime import datetime, timedelta
+from stock.data.data_fetcher import DataFetcher
+from stock.analysis.combined_rate_analysis import analyze
 from stock.data.stock_analysis import StockAnalysis
-from stock.indicator.rsi import *
-from stock.indicator.macd import *
-from stock.indicator.bollinger_bands import *
-from stock.analysis.combined_analysis import *
-import pandas_market_calendars as mcal
+import matplotlib.dates as mdates
+import matplotlib.ticker as ticker
+import numpy as np
 
-def backtest(stock_ticker, start_date):
+# 设置 matplotlib 支持中文，使用 macOS 系统自带字体
+plt.rcParams['font.sans-serif'] = ['Heiti TC']
+plt.rcParams['axes.unicode_minus'] = False
+
+def backtest(stock):
     """
-    回测股票的交易信号，评估分析工具的准确性。
-    :param stock_ticker: 股票代码
-    :param start_date: 回测开始日期
+    进行回测
+    :param stock_code: 股票代码
+    :param start_date: 回测开始日期，格式：YYYYMMDD
+    :param end_date: 回测结束日期，格式：YYYYMMDD
     """
-    # 获取沪深股市的交易日历
-    calendar = mcal.get_calendar('XSHG')
-    current_date = pd.Timestamp(start_date)
-    results = []  # 存储每次分析的结果
 
-    # 获取沪深股市从开始日期到今天的所有交易日
-    trading_days = calendar.valid_days(start_date=current_date, end_date=pd.Timestamp.today())
-    stock = None
+    stock_data = stock.data_fetcher.fetch_data_from_baostock()
 
-    while current_date <= pd.Timestamp.today():
-        # 检查当前日期是否为交易日
-        if current_date in trading_days:
-            # 获取当前日期向前1年的数据，同时向后额外获取5天数据
-            stock = StockAnalysis(stock_ticker,
-                                  (pd.Timestamp(current_date) - pd.DateOffset(years=1)).strftime('%Y-%m-%d'),
-                                  (pd.Timestamp(current_date) + pd.DateOffset(days=5)).strftime('%Y-%m-%d'))
+    # 获取回测时间段内的交易日
+    trade_dates = stock_data[datetime.strptime(stock.start_date, '%Y-%m-%d'):].index
 
-            # 运行分析
-            recommendation = analyze(stock)
+    recommendations = []
+    for trade_date in trade_dates:
+        # 计算交易日前半年的日期
+        half_year_ago_date = (trade_date - timedelta(days=stock.forward_days)).strftime('%Y-%m-%d')
+        # 获取交易日前半年的数据，并创建副本
+        data_for_calculation = stock_data[half_year_ago_date: trade_date.strftime('%Y-%m-%d')].copy()
+        if len(data_for_calculation) > 20:  # 确保有足够的数据进行计算
+            recommendation = analyze(stock, data_for_calculation)
+            recommendations.append((trade_date, recommendation))
+        else:
+            recommendations.append((trade_date, '观望'))
 
-            # 获取当前日期的收盘价
-            action_price = stock.stock_data.loc[current_date, 'close']
+    # 筛选出开始和结束日期内的数据
+    start = datetime.strptime(stock.start_date, '%Y-%m-%d')
+    end = datetime.strptime(stock.end_date, '%Y-%m-%d')
+    filtered_stock_data = stock_data[(stock_data.index >= start) & (stock_data.index <= end)]
+    filtered_recommendations = [(date, rec) for date, rec in recommendations if start <= date <= end]
 
-            # 获取3-5天后的收盘价
-            future_prices = stock.stock_data.loc[pd.Timestamp(current_date) + pd.DateOffset(days=3):
-                                                 pd.Timestamp(current_date) + pd.DateOffset(days=5), 'close']
-
-            # 计算未来价格的平均值
-            future_price = future_prices.mean() if not future_prices.empty else None
-
-            # 评估信号正确性
-            if recommendation.startswith("买入") and future_price and future_price > action_price:
-                correctness = "正确"
-            elif recommendation.startswith("卖出") and future_price and future_price < action_price:
-                correctness = "正确"
+    # 绘制股票价格图并标记操作建议，放大图形尺寸
+    plt.figure(figsize=(25, 9))
+    x_indices = np.arange(len(filtered_stock_data))
+    plt.plot(x_indices, filtered_stock_data['close'], label='收盘价')
+    buy_shown = False
+    sell_shown = False
+    for date, recommendation in filtered_recommendations:
+        index = filtered_stock_data.index.get_loc(date)
+        if recommendation == '买入':
+            if not buy_shown:
+                label = '买入'
+                buy_shown = True
             else:
-                correctness = "错误"
+                label = ""
+            plt.scatter(index, filtered_stock_data.loc[date, 'close'], color='green', marker='^', label=label)
+        elif recommendation == '卖出':
+            if not sell_shown:
+                label = '卖出'
+                sell_shown = True
+            else:
+                label = ""
+            plt.scatter(index, filtered_stock_data.loc[date, 'close'], color='red', marker='v', label=label)
 
-            results.append((current_date, recommendation, action_price, future_price, correctness))
-
-        # 移动到下一个日期
-        current_date += pd.DateOffset(days=1)
-
-    print(results)
-
-    # 结果转为DataFrame
-    results_df = pd.DataFrame(results, columns=['日期', '建议', '操作价格', '未来价格', '准确性'])
-
-    # 计算准确率
-    accuracy = results_df['准确性'].value_counts(normalize=True).get("正确", 0) * 100
-    print(f"策略准确率: {accuracy:.2f}%")
-
-    # 绘制结果
-    plot_backtest_results(results_df, stock.stock_data)
-
-def plot_backtest_results(results_df, stock_data):
-    """
-    绘制回测结果，包含股票价格、操作建议和正确性。
-    """
-    plt.figure(figsize=(14, 7))
-    plt.plot(stock_data.index, stock_data['close'], label='股票价格', color='blue')
-
-    # 标记买入和卖出点
-    for _, row in results_df.iterrows():
-        color = 'green' if row['准确性'] == '正确' else 'red'
-        if row['建议'].startswith("买入"):
-            plt.scatter(row['日期'], row['操作价格'], color=color, marker='^', s=100, label='买入' if '买入' not in plt.gca().get_legend_handles_labels()[1] else "")
-        elif row['建议'].startswith("卖出"):
-            plt.scatter(row['日期'], row['操作价格'], color=color, marker='v', s=100, label='卖出' if '卖出' not in plt.gca().get_legend_handles_labels()[1] else "")
-
-    plt.legend()
-    plt.title('回测结果')
+    plt.title(f'{stock.ticker} 回测结果')
     plt.xlabel('日期')
-    plt.ylabel('价格')
-    plt.xticks(rotation=45)
-    plt.grid()
+    plt.ylabel('收盘价')
+    plt.legend()
+    plt.grid(True)
+
+    # 设置 X 轴主刻度定位器，按 30 个平均分
+    num_ticks = 30
+    tick_locs = np.linspace(0, len(filtered_stock_data) - 1, num_ticks, dtype=int)
+    tick_dates = [filtered_stock_data.index[i].strftime('%m%d') for i in tick_locs]
+    plt.xticks(tick_locs, tick_dates)
+
     plt.show()
 
-# 运行回测
-if __name__ == '__main__':
-    stock_code = 'sh.600570'
-    start_backtest_date = '2024-10-01'
-    backtest(stock_code, start_backtest_date)
+    # 输出操作建议
+    print("操作建议：")
+    for date, recommendation in recommendations:
+        print(f"{date.strftime('%Y%m%d')}: {recommendation}")
+
+
+if __name__ == "__main__":
+
+    stock_ticker = 'SH.600446'  # 示例股票代码，将 ticker 重命名为 stock_ticker
+    # start_date = '2025-03-20'  # 示例回测开始日期
+    start_date = '2025-01-01'  # 示例回测开始日期
+    end_date = '2025-03-21'  # 示例回测结束日期
+    window_list = [6, 24]  # RSI的多个窗口
+
+    stock = StockAnalysis(stock_ticker, start_date, end_date, forward_days=180,
+                          rsi_window_list=window_list,
+                          fast_period=12, slow_period=26, signal_period=9)
+    backtest(stock)

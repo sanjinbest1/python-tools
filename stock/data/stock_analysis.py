@@ -1,8 +1,9 @@
 from stock.data.data_fetcher import DataFetcher
+from datetime import datetime, timedelta
 
 class StockAnalysis:
 
-    def __init__(self, ticker, start_date, end_date, cost = None,
+    def __init__(self, ticker, start_date, end_date, forward_days = None, backwards_days = None, cost = None,
                  rsi_window_list=[5],
                  fast_period=5, slow_period=13, signal_period=5,
                  bollinger_hands_window = 20,bollinger_hands_num_std=2
@@ -19,6 +20,8 @@ class StockAnalysis:
         self.ticker = ticker
         self.start_date = start_date
         self.end_date = end_date
+        self.forward_days = forward_days
+        self.backwards_days = backwards_days
         self.cost = cost
 
         # RSI窗口期
@@ -33,5 +36,7 @@ class StockAnalysis:
         self.bollinger_hands_num_std = bollinger_hands_num_std
 
         # 数据获取器
+        if forward_days is not None:
+            start_date = (datetime.strptime(start_date, '%Y-%m-%d') - timedelta(days=forward_days)).strftime('%Y-%m-%d')
+
         self.data_fetcher = DataFetcher(ticker, start_date, end_date)
-        self.stock_data = self.data_fetcher.fetch_data_from_baostock()

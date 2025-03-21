@@ -26,7 +26,6 @@ def calculate_atr(stock_data, period=14):
     atr = true_range.rolling(window=period).mean()
     return atr
 
-
 def generate_atr_operation_suggestion(atr_data):
     """
     根据 ATR 指标生成操作建议
@@ -38,10 +37,17 @@ def generate_atr_operation_suggestion(atr_data):
     str: 操作建议
     """
     latest_atr = atr_data.iloc[-1]
-    # 简单示例，可根据具体情况调整
-    if latest_atr > atr_data.rolling(window=10).mean().iloc[-1]:
-        return "ATR 高于近期均值，市场波动性增加，操作需谨慎，可适当调整止损止盈。"
-    elif latest_atr < atr_data.rolling(window=10).mean().iloc[-1]:
-        return "ATR 低于近期均值，市场波动性降低，可考虑更积极的操作策略。"
+    recent_mean_atr = atr_data.rolling(window=10).mean().iloc[-1]
+
+    if latest_atr > recent_mean_atr:
+        detailed_suggestion = "ATR 高于近期均值，市场波动性增加，操作需谨慎，可适当调整止损止盈。"
+        simple_suggestion = "观望"
+    elif latest_atr < recent_mean_atr:
+        detailed_suggestion = "ATR 低于近期均值，市场波动性降低，可考虑更积极的操作策略。"
+        simple_suggestion = "买入"
     else:
-        return "ATR 指标无明显变化，维持当前操作策略。"
+        detailed_suggestion = "ATR 指标无明显变化，维持当前操作策略。"
+        simple_suggestion = "观望"
+
+    print(detailed_suggestion)
+    return simple_suggestion

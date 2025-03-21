@@ -45,27 +45,28 @@ def generate_macd_signal(macd, signal, cost=None):
     buy_signal = macd.iloc[-1] > signal.iloc[-1] and macd.iloc[-2] <= signal.iloc[-2]  # 黄金交叉
     sell_signal = macd.iloc[-1] < signal.iloc[-1] and macd.iloc[-2] >= signal.iloc[-2]  # 死亡交叉
 
-    # 如果当前没有仓位
+    simple_suggestion = "观望"
     if current_position == 'empty':
         if buy_signal:
-            return "买入信号：建议在当前价格买入。"
+            detailed_suggestion = "买入信号：建议在当前价格买入。"
+            simple_suggestion = "买入"
         else:
-            return "暂无买入信号，请保持观望。"
-
-    # 如果当前有仓位
+            detailed_suggestion = "暂无买入信号，请保持观望。"
     elif current_position == 'long':
-        # 如果持仓成本存在，判断是否卖出
         if cost is not None:
             if sell_signal:
-                return f"卖出信号：建议卖出，当前持仓成本为 {cost}，市场出现死亡交叉。"
+                detailed_suggestion = f"卖出信号：建议卖出，当前持仓成本为 {cost}，市场出现死亡交叉。"
+                simple_suggestion = "卖出"
             elif macd.iloc[-1] < 0:
-                return f"市场下行信号：当前持仓成本为 {cost}，考虑止损或卖出。"
+                detailed_suggestion = f"市场下行信号：当前持仓成本为 {cost}，考虑止损或卖出。"
+                simple_suggestion = "卖出"
             else:
-                return f"持有信号：市场处于上涨趋势中，建议继续持有。"
+                detailed_suggestion = f"持有信号：市场处于上涨趋势中，建议继续持有。"
         else:
-            return "有仓位，但未提供成本，建议关注市场信号，谨慎操作。"
+            detailed_suggestion = "有仓位，但未提供成本，建议关注市场信号，谨慎操作。"
 
-    return "无有效持仓信号或操作建议。"
+    print(detailed_suggestion)
+    return simple_suggestion
 
 def plot_macd_with_signal(data, macd_dict, cost=None, fast_period=5, slow_period=13, signal_period=5, time_period=None):
     """

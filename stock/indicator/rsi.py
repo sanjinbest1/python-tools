@@ -76,6 +76,7 @@ def calculate_rsi(data, window=14):
 
     return pd.Series(rsi, index=data.index)
 
+
 def generate_operation_suggestion(rsi_values, window_list):
     """
     根据多个周期的 RSI 值生成操作建议
@@ -83,7 +84,6 @@ def generate_operation_suggestion(rsi_values, window_list):
     参数:
     rsi_values (dict): 含有多个周期 RSI 值的字典
     window_list (list): RSI 窗口期列表
-    stock_data (pd.DataFrame): 股票数据
 
     返回:
     str: 操作建议
@@ -93,25 +93,29 @@ def generate_operation_suggestion(rsi_values, window_list):
     overbought = 75
     oversold = 25
 
-    # 操作建议
-    suggestions = []
+    buy_count = 0
+    sell_count = 0
 
-    # 分析每个周期的 RSI 并给出建议
+    # 分析每个周期的 RSI 并统计买入和卖出建议数量
     for window, rsi in latest_rsi_values.items():
         if rsi > overbought:
-            suggestions.append(f"RSI ({window}-day): 超买，建议卖出或减仓")
+            sell_count += 1
         elif rsi < oversold:
-            suggestions.append(f"RSI ({window}-day): 超卖，建议买入或加仓")
-        else:
-            suggestions.append(f"RSI ({window}-day): 正常区间，建议持有")
+            buy_count += 1
 
     # 判断是否短期和长期 RSI 一致
     if latest_rsi_values[window_list[0]] > overbought and latest_rsi_values[window_list[-1]] > overbought:
-        suggestions.append("短期和长期均超买，市场可能回调，建议卖出或减仓")
+        sell_count += 1
     elif latest_rsi_values[window_list[0]] < oversold and latest_rsi_values[window_list[-1]] < oversold:
-        suggestions.append("短期和长期均超卖，市场可能反弹，建议买入或加仓")
+        buy_count += 1
 
-    # 汇总操作建议
-    return "\n".join(suggestions)
+    # 根据买入和卖出建议数量给出最终建议
+    if buy_count > sell_count:
+        return "买入"
+    elif sell_count > buy_count:
+        return "卖出"
+    else:
+        return "观望"
+
 
 

@@ -1,34 +1,44 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-def calculate_bollinger_bands(data, window=10, num_std=1.5):
-    """
-    计算布林带：中间线（SMA）、上轨线、下轨线
-    :param data: 包含股票历史数据的DataFrame，要求至少有 'close' 列
-    :param window: 移动平均线的窗口大小，默认20
-    :param num_std: 标准差倍数，默认2
-    :return: 返回带有布林带的DataFrame
-    """
-    data['SMA'] = data['close'].rolling(window=window).mean()  # 计算20日简单移动平均线
-    data['std'] = data['close'].rolling(window=window).std()  # 计算20日标准差
 
-    # 计算布林带的上下轨
-    data['Upper_Band'] = data['SMA'] + (data['std'] * num_std)
-    data['Lower_Band'] = data['SMA'] - (data['std'] * num_std)
+def calculate_bollinger_bands(data, window=20, num_std=2):
+    """
+    计算布林带指标
+
+    参数:
+    data (pd.DataFrame): 包含收盘价的DataFrame
+    window (int): 计算移动平均线和标准差的窗口大小，默认为20
+    num_std (int): 标准差的倍数，默认为2
+
+    返回:
+    pd.DataFrame: 包含布林带指标的DataFrame
+    """
+    # 使用loc方法明确指定修改位置
+    data.loc[:, 'SMA'] = data['close'].rolling(window=window).mean()
+    data.loc[:, 'std'] = data['close'].rolling(window=window).std()
+
+    data.loc[:, 'Upper_Band'] = data['SMA'] + (data['std'] * num_std)
+    data.loc[:, 'Lower_Band'] = data['SMA'] - (data['std'] * num_std)
 
     return data
+
 
 def generate_bollinger_signals(data):
     """
-    根据布林带生成买入卖出信号
-    :param data: 包含布林带数据的DataFrame
-    :return: 添加了 'Buy_Signal' 和 'Sell_Signal' 的DataFrame
+    生成布林带买卖信号
+
+    参数:
+    data (pd.DataFrame): 包含布林带指标的DataFrame
+
+    返回:
+    pd.DataFrame: 包含布林带买卖信号的DataFrame
     """
-    data['Buy_Signal'] = (data['close'] < data['Lower_Band'])  # 当收盘价低于下轨时买入
-    data['Sell_Signal'] = (data['close'] > data['Upper_Band'])  # 当收盘价高于上轨时卖出
+    #使用loc方法明确指定修改位置
+    data.loc[:, 'Buy_Signal'] = (data['close'] < data['Lower_Band'])
+    data.loc[:, 'Sell_Signal'] = (data['close'] > data['Upper_Band'])
 
     return data
-
 
 def generate_bollinger_operations(df):
     """
@@ -39,16 +49,18 @@ def generate_bollinger_operations(df):
     latest_data = df.iloc[-1]  # 获取最新一条数据
 
     # 初始化操作建议
-    operation = "暂无操作建议"
+    simple_operation = "观望"
+    detailed_operation = "观望：当前价格位于布林带区间内，暂无明显买卖信号。"
 
     if latest_data['close'] < latest_data['Lower_Band']:
-        operation = "买入：当前价格低于布林带下轨，可能存在超卖，建议关注买入机会。"
+        detailed_operation = "买入：当前价格低于布林带下轨，可能存在超卖，建议关注买入机会。"
+        simple_operation = "买入"
     elif latest_data['close'] > latest_data['Upper_Band']:
-        operation = "卖出：当前价格高于布林带上轨，可能存在超买，建议关注卖出机会。"
-    else:
-        operation = "观望：当前价格位于布林带区间内，暂无明显买卖信号。"
+        detailed_operation = "卖出：当前价格高于布林带上轨，可能存在超买，建议关注卖出机会。"
+        simple_operation = "卖出"
 
-    return operation
+    print(detailed_operation)
+    return simple_operation
 
 
 

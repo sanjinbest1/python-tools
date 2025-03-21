@@ -63,7 +63,6 @@ def calculate_adx(stock_data, period=14):
     adx = dx.rolling(window=period).mean()
     return adx
 
-
 def generate_adx_operation_suggestion(adx_data):
     """
     根据 ADX 指标生成操作建议
@@ -76,12 +75,18 @@ def generate_adx_operation_suggestion(adx_data):
     """
     latest_adx = adx_data.iloc[-1]
     if latest_adx < 20:
-        return "ADX 小于 20，显示趋势较弱，市场可能处于盘整状态，建议观望。"
+        print("ADX 小于 20，显示趋势较弱，市场可能处于盘整状态，建议观望。")
+        return "观望"
     elif 20 <= latest_adx < 40:
-        return "ADX 在 20 到 40 之间，显示趋势开始形成，可关注趋势发展。"
+        print("ADX 在 20 到 40 之间，显示趋势开始形成，可关注趋势发展。")
+        return "观望"
     elif 40 <= latest_adx < 60:
-        return "ADX 在 40 到 60 之间，显示趋势较强，可考虑跟随趋势操作。"
+        print("ADX 在 40 到 60 之间，显示趋势较强，可考虑跟随趋势操作。")
+        return "买入"
     elif latest_adx >= 60:
-        return "ADX 大于等于 60，显示趋势非常强，可坚定跟随趋势，但需注意趋势反转风险。"
+        print("ADX 大于等于 60，显示趋势非常强，可坚定跟随趋势，但需注意趋势反转风险。")
+        return "买入"
     else:
-        return "ADX 指标无明显指示，建议观望。"
+        print("ADX 指标无明显指示，建议观望。")
+        return "观望"
+

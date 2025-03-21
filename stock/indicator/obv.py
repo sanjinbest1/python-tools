@@ -69,13 +69,21 @@ def generate_obv_operation_suggestion(obv_data, stock_data):
     obv_trend = obv_data.diff().iloc[-1]
     price_trend = stock_data['close'].diff().iloc[-1]
 
+    simple_suggestion = "观望"
     if obv_trend > 0 and price_trend > 0:
-        return "OBV和股价同时上升，市场多头力量强劲，建议买入或持有。"
+        detailed_suggestion = "OBV和股价同时上升，市场多头力量强劲，建议买入或持有。"
+        simple_suggestion = "买入"
     elif obv_trend > 0 and price_trend < 0:
-        return "OBV上升但股价下降，可能是短期回调，建议关注，可能是买入机会。"
+        detailed_suggestion = "OBV上升但股价下降，可能是短期回调，建议关注，可能是买入机会。"
+        simple_suggestion = "买入"
     elif obv_trend < 0 and price_trend > 0:
-        return "OBV下降但股价上升，市场动能不足，建议谨慎，可能是卖出信号。"
+        detailed_suggestion = "OBV下降但股价上升，市场动能不足，建议谨慎，可能是卖出信号。"
+        simple_suggestion = "卖出"
     elif obv_trend < 0 and price_trend < 0:
-        return "OBV和股价同时下降，市场空头力量较强，建议卖出或观望。"
+        detailed_suggestion = "OBV和股价同时下降，市场空头力量较强，建议卖出或观望。"
+        simple_suggestion = "卖出"
     else:
-        return "OBV指标无明显趋势，建议观望。"
+        detailed_suggestion = "OBV指标无明显趋势，建议观望。"
+
+    print(detailed_suggestion)
+    return simple_suggestion
