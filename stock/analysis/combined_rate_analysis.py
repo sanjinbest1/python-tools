@@ -190,7 +190,7 @@ def analyze(stock,stock_data):
 if __name__ == '__main__':
     ticker ='sh.600570'  # 股票代码
     start_date = '2024-09-23'
-    end_date = '2025-03-21'
+    end_date = '2025-03-24'
     window_list = [6, 24]  # RSI的多个窗口
 
     stock = StockAnalysis(ticker, start_date, end_date,

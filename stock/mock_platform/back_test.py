@@ -1,12 +1,8 @@
-import tushare as ts
-import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
-from stock.data.data_fetcher import DataFetcher
+
 from stock.analysis.combined_rate_analysis import analyze
 from stock.data.stock_analysis import StockAnalysis
-import matplotlib.dates as mdates
-import matplotlib.ticker as ticker
 import numpy as np
 
 # 设置 matplotlib 支持中文，使用 macOS 系统自带字体
@@ -37,6 +33,13 @@ def backtest(stock):
             recommendations.append((trade_date, recommendation))
         else:
             recommendations.append((trade_date, '观望'))
+
+        # 获取当天的收盘价
+        price = stock_data.loc[trade_date, 'close']
+        # 执行交易
+        stock.simulation.execute_trade(trade_date, stock.ticker, recommendation, price)
+        #最新价格
+        stock.last_price = price
 
     # 筛选出开始和结束日期内的数据
     start = datetime.strptime(stock.start_date, '%Y-%m-%d')
@@ -74,7 +77,7 @@ def backtest(stock):
     plt.grid(True)
 
     # 设置 X 轴主刻度定位器，按 30 个平均分
-    num_ticks = 30
+    num_ticks = 50
     tick_locs = np.linspace(0, len(filtered_stock_data) - 1, num_ticks, dtype=int)
     tick_dates = [filtered_stock_data.index[i].strftime('%m%d') for i in tick_locs]
     plt.xticks(tick_locs, tick_dates)
@@ -86,16 +89,28 @@ def backtest(stock):
     for date, recommendation in recommendations:
         print(f"{date.strftime('%Y%m%d')}: {recommendation}")
 
-
 if __name__ == "__main__":
 
     stock_ticker = 'SH.600446'  # 示例股票代码，将 ticker 重命名为 stock_ticker
     # start_date = '2025-03-20'  # 示例回测开始日期
     start_date = '2025-01-01'  # 示例回测开始日期
-    end_date = '2025-03-21'  # 示例回测结束日期
+    end_date = '2025-03-25'  # 示例回测结束日期
     window_list = [6, 24]  # RSI的多个窗口
 
-    stock = StockAnalysis(stock_ticker, start_date, end_date, forward_days=180,
+    stock = StockAnalysis(stock_ticker, start_date, end_date, forward_days=180,initial_cash=10000,
                           rsi_window_list=window_list,
                           fast_period=12, slow_period=26, signal_period=9)
     backtest(stock)
+
+    # 获取最终持仓价值
+    # 计算投资回报率
+    portfolio_value = stock.simulation.get_portfolio_value(stock.last_price, stock.ticker)
+    print(f"最终持仓价值: {portfolio_value:.2f}")
+    returns = stock.simulation.get_portfolio_value(stock.last_price, stock.ticker) / stock.initial_cash - 1
+    print(f"最终投资回报率: {returns:.2%}")
+
+    transactions = stock.simulation.get_transactions()
+    print("交易记录：")
+    for t in transactions:
+        print(stock.simulation.format_transaction(t))
+
