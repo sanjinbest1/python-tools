@@ -1,3 +1,5 @@
+from stock.simulator.dynamic_ratio_strategy import DynamicRatioStrategy
+
 class Simulation:
     """
     模拟交易类，负责执行交易并管理持仓和账户状态。
@@ -14,19 +16,25 @@ class Simulation:
         self.capital = initial_capital  # 当前可用资金
         self.positions = {}  # 持仓信息，格式为 {股票代码: 持仓数量}
         self.transactions = []  # 交易记录，格式为 [交易信息字典]
+        self.ratio_strategy = DynamicRatioStrategy()  # 动态比例策略
 
-    def execute_trade(self, date, symbol, recommendation, price, sell_ratio=0.5):
+    def execute_trade(self, date, symbol, recommendation, price):
         """
         执行交易
         :param date: 交易日期
         :param symbol: 股票代码
         :param recommendation: 交易建议 ('买入', '卖出', '观望')
         :param price: 交易价格
-        :param sell_ratio: 卖出比例 (0到1之间，默认为0.5，即每次卖出50%的持仓)
         """
+
+        if recommendation not in ['买入', '卖出']:
+            return
+
+        buy_ratio, sell_ratio = self.ratio_strategy.calculate_operation_ratio(recommendation, self.calculate_account_profit(price), 0.5)
+
         if recommendation == '买入':
             # 假设每次买入固定比例的资金
-            quantity = int(self.capital * 0.2 // price)  # 用20%的资金买入，取整
+            quantity = int(self.capital * buy_ratio // price)  # 用20%的资金买入，取整
             if quantity > 0:
                 cost = quantity * price
                 self.capital -= cost

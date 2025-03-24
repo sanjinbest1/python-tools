@@ -8,9 +8,7 @@ class StockAnalysis:
                  initial_cash = None, cost = None,
                  rsi_window_list=[5],
                  fast_period=5, slow_period=13, signal_period=5,
-                 bollinger_hands_window = 20,bollinger_hands_num_std=2,
-
-                 simulator=None
+                 bollinger_hands_window = 20,bollinger_hands_num_std=2
                  ):
         """
         初始化股票分析对象

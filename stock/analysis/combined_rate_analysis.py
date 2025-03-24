@@ -188,12 +188,12 @@ def analyze(stock,stock_data):
 
 # 示例：创建 StockAnalysis 对象并执行分析
 if __name__ == '__main__':
-    ticker ='sh.600570'  # 股票代码
+    ticker ='sz.002657'  # 股票代码
     start_date = '2024-09-23'
     end_date = '2025-03-24'
     window_list = [6, 24]  # RSI的多个窗口
 
-    stock = StockAnalysis(ticker, start_date, end_date,
+    stock = StockAnalysis(ticker, start_date, end_date,initial_cash=100000,
                           rsi_window_list=window_list,
                           fast_period=12, slow_period=26, signal_period=9)
     stock_data = stock.data_fetcher.fetch_data_from_baostock()
