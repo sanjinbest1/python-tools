@@ -75,18 +75,18 @@ def generate_adx_operation_suggestion(adx_data):
     """
     latest_adx = adx_data.iloc[-1]
     if latest_adx < 20:
-        print("ADX 小于 20，显示趋势较弱，市场可能处于盘整状态，建议观望。")
-        return "观望"
+        detailed_suggestion = "ADX - {:.2f}, 趋势较弱，市场可能处于盘整状态，建议观望。".format(latest_adx)
+        simple_suggestion = "观望"
     elif 20 <= latest_adx < 40:
-        print("ADX 在 20 到 40 之间，显示趋势开始形成，可关注趋势发展。")
-        return "观望"
+        detailed_suggestion = "ADX - {:.2f}, 趋势开始形成，可关注趋势发展。".format(latest_adx)
+        simple_suggestion = "观望"
     elif 40 <= latest_adx < 60:
-        print("ADX 在 40 到 60 之间，显示趋势较强，可考虑跟随趋势操作。")
-        return "买入"
-    elif latest_adx >= 60:
-        print("ADX 大于等于 60，显示趋势非常强，可坚定跟随趋势，但需注意趋势反转风险。")
-        return "买入"
+        detailed_suggestion = "ADX - {:.2f}, 趋势较强，可考虑跟随趋势操作。".format(latest_adx)
+        simple_suggestion = "买入"
     else:
-        print("ADX 指标无明显指示，建议观望。")
-        return "观望"
+        detailed_suggestion = "ADX - {:.2f}, 趋势非常强，可坚定跟随趋势，但需注意趋势反转风险。".format(latest_adx)
+        simple_suggestion = "买入"
+
+    print(detailed_suggestion)
+    return simple_suggestion
 

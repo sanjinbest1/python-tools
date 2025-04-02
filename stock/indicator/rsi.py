@@ -90,8 +90,8 @@ def generate_operation_suggestion(rsi_values, window_list):
     """
     latest_rsi_values = {window: rsi_values[window].iloc[-1] for window in window_list}
 
-    overbought = 75
-    oversold = 25
+    overbought = 70
+    oversold = 30
 
     buy_count = 0
     sell_count = 0

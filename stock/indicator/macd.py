@@ -31,7 +31,6 @@ def generate_macd_signal(macd, signal, cost=None):
     参数:
     - macd (pd.Series): 计算得到的MACD值
     - signal (pd.Series): 计算得到的信号线值
-    - current_position (str): 当前持仓状态，'long'代表有仓位，'empty'代表空仓。默认为None
     - cost (float): 当前持仓的成本价，只有在有持仓时需要提供
 
     返回:
@@ -46,27 +45,25 @@ def generate_macd_signal(macd, signal, cost=None):
     sell_signal = macd.iloc[-1] < signal.iloc[-1] and macd.iloc[-2] >= signal.iloc[-2]  # 死亡交叉
 
     simple_suggestion = "观望"
+    detailed_suggestion = "MACD - {:.2f}, 观望，无明显信号。".format(macd.iloc[-1])
+
     if current_position == 'empty':
         if buy_signal:
-            detailed_suggestion = "买入信号：建议在当前价格买入。"
+            detailed_suggestion = "MACD - {:.2f}, 买入信号，建议在当前价格买入。".format(macd.iloc[-1])
             simple_suggestion = "买入"
-        else:
-            detailed_suggestion = "暂无买入信号，请保持观望。"
     elif current_position == 'long':
-        if cost is not None:
-            if sell_signal:
-                detailed_suggestion = f"卖出信号：建议卖出，当前持仓成本为 {cost}，市场出现死亡交叉。"
-                simple_suggestion = "卖出"
-            elif macd.iloc[-1] < 0:
-                detailed_suggestion = f"市场下行信号：当前持仓成本为 {cost}，考虑止损或卖出。"
-                simple_suggestion = "卖出"
-            else:
-                detailed_suggestion = f"持有信号：市场处于上涨趋势中，建议继续持有。"
+        if sell_signal:
+            detailed_suggestion = "MACD - {:.2f}, 卖出信号，建议卖出，市场出现死亡交叉。".format(macd.iloc[-1])
+            simple_suggestion = "卖出"
+        elif macd.iloc[-1] < 0:
+            detailed_suggestion = "MACD - {:.2f}, 市场下行信号，考虑止损或卖出。".format(macd.iloc[-1])
+            simple_suggestion = "卖出"
         else:
-            detailed_suggestion = "有仓位，但未提供成本，建议关注市场信号，谨慎操作。"
+            detailed_suggestion = "MACD - {:.2f}, 持有信号，市场处于上涨趋势中，建议继续持有。".format(macd.iloc[-1])
 
     print(detailed_suggestion)
     return simple_suggestion
+
 
 def plot_macd_with_signal(data, macd_dict, cost=None, fast_period=5, slow_period=13, signal_period=5, time_period=None):
     """

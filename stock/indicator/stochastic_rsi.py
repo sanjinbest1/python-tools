@@ -91,20 +91,21 @@ def generate_stochastic_rsi_operation_suggestion(stochastic_rsi_data):
 
     simple_suggestion = "观望"
     if latest_k > overbought and latest_d > overbought:
-        detailed_suggestion = "Stochastic RSI 显示超买，%K 和 %D 均高于 80，建议卖出或减仓。"
+        detailed_suggestion = "Stochastic RSI - %K: {:.2f}, %D: {:.2f}，超买，建议卖出或减仓。".format(latest_k, latest_d)
         simple_suggestion = "卖出"
     elif latest_k < oversold and latest_d < oversold:
-        detailed_suggestion = "Stochastic RSI 显示超卖，%K 和 %D 均低于 20，建议买入或加仓。"
+        detailed_suggestion = "Stochastic RSI - %K: {:.2f}, %D: {:.2f}，超卖，建议买入或加仓。".format(latest_k, latest_d)
         simple_suggestion = "买入"
     elif latest_k > latest_d and latest_k < overbought:
-        detailed_suggestion = "Stochastic RSI 中 %K 上穿 %D 且未超买，可能是买入信号，建议关注。"
+        detailed_suggestion = "Stochastic RSI - %K: {:.2f}, %D: {:.2f}，%K 上穿 %D 且未超买，可能是买入信号，建议关注。".format(latest_k, latest_d)
         simple_suggestion = "买入"
     elif latest_k < latest_d and latest_k > oversold:
-        detailed_suggestion = "Stochastic RSI 中 %K 下穿 %D 且未超卖，可能是卖出信号，建议关注。"
+        detailed_suggestion = "Stochastic RSI - %K: {:.2f}, %D: {:.2f}，%K 下穿 %D 且未超卖，可能是卖出信号，建议关注。".format(latest_k, latest_d)
         simple_suggestion = "卖出"
     else:
-        detailed_suggestion = "Stochastic RSI 指标无明显趋势，建议观望。"
+        detailed_suggestion = "Stochastic RSI - %K: {:.2f}, %D: {:.2f}，指标无明显趋势，建议观望。".format(latest_k, latest_d)
 
     print(detailed_suggestion)
     return simple_suggestion
+
 

@@ -1,17 +1,15 @@
 import yfinance as yf
-
 import baostock as bs
+import akshare as ak
 import pandas as pd
 
 class DataFetcher:
     def __init__(self, ticker, start_date, end_date):
         """
         初始化数据获取器
-
-        参数:
-        ticker (str): 股票代码，如'AAPL'、'GOOG'
-        start_date (str): 开始日期，格式'YYYY-MM-DD'
-        end_date (str): 结束日期，格式'YYYY-MM-DD'
+        :param ticker: 股票代码（美股: "AAPL"，A股: "sh.600000"，港股: "00700"）
+        :param start_date: 开始日期（YYYY-MM-DD）
+        :param end_date: 结束日期（YYYY-MM-DD）
         """
         self.ticker = ticker
         self.start_date = start_date
@@ -19,56 +17,79 @@ class DataFetcher:
 
     def fetch_data(self):
         """
-        从yfinance获取股票数据
-
-        返回:
-        pd.DataFrame: 包含股票数据的DataFrame
+        根据股票代码自动选择数据源，返回统一格式的股票数据。
         """
-        stock_data = yf.download(self.ticker, start=self.start_date, end=self.end_date)
+        if self.ticker.isdigit():  # 纯数字，可能是港股
+            return self.fetch_data_hk()
+        elif self.ticker.startswith(("sh.", "sz.")):  # A股代码
+            return self.fetch_data_cn()
+        else:  # 默认美股
+            return self.fetch_data_us()
 
+    def fetch_data_us(self):
+        """从 yfinance 获取美股数据"""
+        stock_data = yf.download(self.ticker, start=self.start_date, end=self.end_date)
+        stock_data = stock_data[['Open', 'High', 'Low', 'Close', 'Volume']]
+        stock_data.rename(columns={'Open': 'open', 'High': 'high', 'Low': 'low', 'Close': 'close', 'Volume': 'volume'}, inplace=True)
+        stock_data.index.name = 'date'
+        stock_data['amount'] = None  # 美股没有交易额数据
         return stock_data
 
-    def fetch_data_from_baostock(self):
-        """
-        使用baostock从A股市场获取指定股票的历史数据
-        :param stock_code: 股票代码，如 'sh.600000'（注意沪市股票使用 'sh'，深市股票使用 'sz'）
-        :param start_date: 开始日期，格式为 'YYYY-MM-DD'
-        :param end_date: 结束日期，格式为 'YYYY-MM-DD'
-        :return: Pandas DataFrame，包含指定日期范围内的股票数据
-        """
-        # 登录baostock
-        lg = bs.login()
-        if lg.error_code != '0':
-            print(f"登录失败：{lg.error_msg}")
-            return None
-
-        # 查询股票历史数据
+    def fetch_data_cn(self):
+        """从 baostock 获取A股数据"""
+        bs.login()
         rs = bs.query_history_k_data_plus(
             self.ticker,
             "date,open,high,low,close,volume,amount",
             start_date=self.start_date,
             end_date=self.end_date,
-            frequency="d",  # 日线数据
-            adjustflag="3"  # 前复权
+            frequency="d",
+            adjustflag="3"
         )
-
-        # 将返回的数据转化为DataFrame
         data_list = []
         while rs.error_code == '0' and rs.next():
             data_list.append(rs.get_row_data())
 
-        if data_list:
-            data = pd.DataFrame(data_list, columns=rs.fields)
-            data['date'] = pd.to_datetime(data['date'])
-            data = data.set_index('date')
-        else:
-            print(f"没有数据: {self.ticker}")
-            data = None
+        if not data_list:
+            print(f"没有A股数据: {self.ticker}")
+            return None
 
-        # 登出baostock
+        data = pd.DataFrame(data_list, columns=rs.fields)
+        data['date'] = pd.to_datetime(data['date'])
+        data.set_index('date', inplace=True)
+
+        # 转换数据格式
+        for col in ['open', 'high', 'low', 'close', 'volume', 'amount']:
+            data[col] = pd.to_numeric(data[col], errors='coerce')
+
         bs.logout()
+        return data
 
-        # 确保 'close' 列是数值类型
-        data['close'] = pd.to_numeric(data['close'], errors='coerce')
+    def fetch_data_hk(self):
+        """从 akshare 获取港股数据"""
+        data = ak.stock_hk_hist(symbol=self.ticker, period="daily", start_date=self.start_date.replace("-", ""), end_date=self.end_date.replace("-", ""), adjust="qfq")
+
+        if data is None or data.empty:
+            print(f"没有港股数据: {self.ticker}")
+            return None
+
+        # 重命名字段，使其与 A股 / 美股 统一
+        data.rename(columns={
+            "日期": "date",
+            "开盘": "open",
+            "最高": "high",
+            "最低": "low",
+            "收盘": "close",
+            "成交量": "volume",
+            "成交额": "amount"
+        }, inplace=True)
+
+        # 转换数据类型
+        data['date'] = pd.to_datetime(data['date'])
+        data.set_index('date', inplace=True)
+
+        for col in ['open', 'high', 'low', 'close', 'volume', 'amount']:
+            data[col] = pd.to_numeric(data[col], errors='coerce')
 
         return data
+

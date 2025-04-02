@@ -40,13 +40,13 @@ def generate_atr_operation_suggestion(atr_data):
     recent_mean_atr = atr_data.rolling(window=10).mean().iloc[-1]
 
     if latest_atr > recent_mean_atr:
-        detailed_suggestion = "ATR 高于近期均值，市场波动性增加，操作需谨慎，可适当调整止损止盈。"
+        detailed_suggestion = "ATR - {:.2f}, 均值 - {:.2f}, 市场波动性增加，操作需谨慎，可适当调整止损止盈。".format(latest_atr, recent_mean_atr)
         simple_suggestion = "观望"
     elif latest_atr < recent_mean_atr:
-        detailed_suggestion = "ATR 低于近期均值，市场波动性降低，可考虑更积极的操作策略。"
+        detailed_suggestion = "ATR - {:.2f}, 均值 - {:.2f}, 市场波动性降低，可考虑更积极的操作策略。".format(latest_atr, recent_mean_atr)
         simple_suggestion = "买入"
     else:
-        detailed_suggestion = "ATR 指标无明显变化，维持当前操作策略。"
+        detailed_suggestion = "ATR - {:.2f}, 均值 - {:.2f}, 指标无明显变化，维持当前操作策略。".format(latest_atr, recent_mean_atr)
         simple_suggestion = "观望"
 
     print(detailed_suggestion)

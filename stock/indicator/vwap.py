@@ -61,13 +61,14 @@ def generate_vwap_operation_suggestion(stock_data, vwap_data):
 
     simple_suggestion = "观望"
     if latest_price > latest_vwap:
-        detailed_suggestion = "当前股价高于 VWAP，显示多头力量较强，建议买入或持有。"
+        detailed_suggestion = "VWAP - {:.2f}, 当前股价 - {:.2f}，显示多头力量较强，建议买入或持有。".format(latest_vwap, latest_price)
         simple_suggestion = "买入"
     elif latest_price < latest_vwap:
-        detailed_suggestion = "当前股价低于 VWAP，显示空头力量较强，建议卖出或观望。"
+        detailed_suggestion = "VWAP - {:.2f}, 当前股价 - {:.2f}，显示空头力量较强，建议卖出或观望。".format(latest_vwap, latest_price)
         simple_suggestion = "卖出"
     else:
-        detailed_suggestion = "当前股价与 VWAP 接近，市场方向不明，建议观望。"
+        detailed_suggestion = "VWAP - {:.2f}, 当前股价 - {:.2f}，市场方向不明，建议观望。".format(latest_vwap, latest_price)
 
     print(detailed_suggestion)
     return simple_suggestion
+

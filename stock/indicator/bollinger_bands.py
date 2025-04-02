@@ -50,13 +50,13 @@ def generate_bollinger_operations(df):
 
     # 初始化操作建议
     simple_operation = "观望"
-    detailed_operation = "观望：当前价格位于布林带区间内，暂无明显买卖信号。"
+    detailed_operation = "收盘价 - {:.2f}, 下轨 - {:.2f}, 上轨 - {:.2f}, 观望：当前价格位于布林带区间内，暂无明显买卖信号。".format(latest_data['close'], latest_data['Lower_Band'], latest_data['Upper_Band'])
 
     if latest_data['close'] < latest_data['Lower_Band']:
-        detailed_operation = "买入：当前价格低于布林带下轨，可能存在超卖，建议关注买入机会。"
+        detailed_operation = "收盘价 - {:.2f}, 下轨 - {:.2f}, 上轨 - {:.2f}, 买入：当前价格低于布林带下轨，可能存在超卖，建议关注买入机会。".format(latest_data['close'], latest_data['Lower_Band'], latest_data['Upper_Band'])
         simple_operation = "买入"
     elif latest_data['close'] > latest_data['Upper_Band']:
-        detailed_operation = "卖出：当前价格高于布林带上轨，可能存在超买，建议关注卖出机会。"
+        detailed_operation = "收盘价 - {:.2f}, 下轨 - {:.2f}, 上轨 - {:.2f}, 卖出：当前价格高于布林带上轨，可能存在超买，建议关注卖出机会。".format(latest_data['close'], latest_data['Lower_Band'], latest_data['Upper_Band'])
         simple_operation = "卖出"
 
     print(detailed_operation)
