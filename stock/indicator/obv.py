@@ -1,22 +1,25 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+from stock.data.config import OBV_CONFIG  # 从配置文件导入参数
 
-
-def calculate_obv(stock_data):
+def calculate_obv(stock_data, initial_value=None):
     """
     计算能量潮（OBV）指标
 
     参数:
     stock_data (pd.DataFrame): 股票数据，包含收盘价和成交量
+    initial_value (float): OBV初始值，默认为配置中的初始值
 
     返回:
     pd.Series: OBV值
     """
-    delta = stock_data['close'].diff()
-    volume = pd.to_numeric(stock_data['volume'], errors='coerce')  # 将volume列转换为数值类型
+    if initial_value is None:
+        initial_value = OBV_CONFIG["obv_initial_value"]  # 读取配置初始值
 
-    obv = []
-    obv.append(float(volume.iloc[0]))  # 将初始值转换为浮点数类型
+    delta = stock_data['close'].diff()
+    volume = pd.to_numeric(stock_data['volume'], errors='coerce')  # 转换成交量为数值类型
+
+    obv = [initial_value]
     for i in range(1, len(delta)):
         if delta.iloc[i] > 0:
             obv.append(obv[-1] + volume.iloc[i])
@@ -25,8 +28,7 @@ def calculate_obv(stock_data):
         else:
             obv.append(obv[-1])
 
-    obv_series = pd.Series(obv, index=stock_data.index)
-    return obv_series
+    return pd.Series(obv, index=stock_data.index)
 
 
 def plot_obv(stock_data, obv_data):
@@ -62,6 +64,7 @@ def generate_obv_operation_suggestion(obv_data, stock_data):
     参数:
     obv_data (pd.Series): OBV 值
     stock_data (pd.DataFrame): 股票数据，包含收盘价
+    config (dict): 配置文件中的参数
 
     返回:
     str: 操作建议
@@ -69,20 +72,24 @@ def generate_obv_operation_suggestion(obv_data, stock_data):
     obv_trend = obv_data.diff().iloc[-1]
     price_trend = stock_data['close'].diff().iloc[-1]
 
+    threshold_positive = OBV_CONFIG["obv_threshold_positive"]
+    threshold_negative = OBV_CONFIG["obv_threshold_negative"]
+
     detailed_suggestion = "无建议，观望"
     simple_suggestion = "观望"
-    if obv_trend > 0 and price_trend > 0:
-        detailed_suggestion = "OBV - {:.2f}, 收盘价变化 - {:.2f}, 市场多头力量强劲，建议买入或持有。".format(obv_trend, price_trend)
+    if obv_trend > threshold_positive and price_trend > 0:
+        detailed_suggestion = f"OBV - {obv_trend:.2f}, 收盘价变化 - {price_trend:.2f}, 市场多头力量强劲，建议买入或持有。"
         simple_suggestion = "买入"
-    elif obv_trend > 0 and price_trend < 0:
-        detailed_suggestion = "OBV - {:.2f}, 收盘价变化 - {:.2f}, OBV上升但股价下降，可能是短期回调，建议关注，可能是买入机会。".format(obv_trend, price_trend)
+    elif obv_trend > threshold_positive and price_trend < 0:
+        detailed_suggestion = f"OBV - {obv_trend:.2f}, 收盘价变化 - {price_trend:.2f}, OBV上升但股价下降，可能是短期回调，建议关注，可能是买入机会。"
         simple_suggestion = "买入"
-    elif obv_trend < 0 and price_trend > 0:
-        detailed_suggestion = "OBV - {:.2f}, 收盘价变化 - {:.2f}, OBV下降但股价上升，市场动能不足，建议谨慎，可能是卖出信号。".format(obv_trend, price_trend)
+    elif obv_trend < threshold_negative and price_trend > 0:
+        detailed_suggestion = f"OBV - {obv_trend:.2f}, 收盘价变化 - {price_trend:.2f}, OBV下降但股价上升，市场动能不足，建议谨慎，可能是卖出信号。"
         simple_suggestion = "卖出"
-    elif obv_trend < 0 and price_trend < 0:
-        detailed_suggestion = "OBV - {:.2f}, 收盘价变化 - {:.2f}, 市场空头力量较强，建议卖出或观望。".format(obv_trend, price_trend)
+    elif obv_trend < threshold_negative and price_trend < 0:
+        detailed_suggestion = f"OBV - {obv_trend:.2f}, 收盘价变化 - {price_trend:.2f}, 市场空头力量较强，建议卖出或观望。"
         simple_suggestion = "卖出"
 
     print(detailed_suggestion)
     return simple_suggestion
+

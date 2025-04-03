@@ -1,121 +1,110 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from stock.data.config import RSI_CONFIG  # 从配置文件导入 RSI 参数
 
-def calculate_rsi_for_multiple_windows(stock_data, window_list):
+def calculate_rsi(data, window=None):
     """
-    计算多个窗口期的RSI值并返回
-    :param stock_data: 股票数据，包含收盘价
-    :param window_list: RSI窗口期列表
-    :return: 一个包含多个 RSI 序列的字典
-    """
-    rsi_values = {}
-    for window in window_list:
-        rsi_values[window] = calculate_rsi(stock_data['close'], window)
-    return rsi_values
-
-
-def plot_multiple_rsi(stock_data, rsi_values, window_list):
-    """
-    绘制多个周期的 RSI 图表，同时显示不同周期的 RSI 指标
-    :param stock_data: 股票数据，包含收盘价
-    :param rsi_values: 各个周期的 RSI 值（字典形式）
-    :param window_list: RSI 窗口期列表
-    """
-    fig, ax1 = plt.subplots(figsize=(12, 6))
-
-    # 绘制股票收盘价图
-    ax1.plot(stock_data.index, stock_data['close'], label='Stock Price', color='blue')
-    ax1.set_title(f'Stock Price and RSI ({", ".join([str(w) + "-day" for w in window_list])})', fontsize=14)
-    ax1.set_ylabel('Stock Price', color='blue')
-    ax1.set_xlabel('Date')
-    ax1.legend(loc='upper left')
-
-    # 创建共享x轴的第二个坐标轴用于绘制多个RSI
-    ax2 = ax1.twinx()
-
-    # 逐个绘制每个周期的 RSI
-    colors = ['orange', 'green', 'red', 'purple']
-    for i, window in enumerate(window_list):
-        ax2.plot(rsi_values[window].index, rsi_values[window], label=f'RSI ({window}-day)', color=colors[i % len(colors)])
-
-    # 添加超买和超卖参考线
-    ax2.axhline(y=75, color='r', linestyle='--', label='Overbought (75)')
-    ax2.axhline(y=25, color='g', linestyle='--', label='Oversold (25)')
-    ax2.set_ylabel('RSI', color='orange')
-    ax2.legend(loc='upper right')
-
-    # 调整布局，防止子图重叠
-    plt.tight_layout()
-    plt.show()
-
-def calculate_rsi(data, window=14):
-    """
-    计算RSI（相对强弱指数）
+    计算 RSI（相对强弱指数）
 
     参数:
     data (pd.Series): 股票的收盘价序列
-    window (int): RSI计算的窗口期，默认为14
+    window (int): RSI 计算窗口期，默认为配置文件中的值
 
     返回:
-    pd.Series: RSI值
+    pd.Series: RSI 值
     """
+    if window is None:
+        window = RSI_CONFIG["default_window"]  # 读取默认 RSI 窗口期
+
     delta = data.diff()
     gain = delta.where(delta > 0, 0)
     loss = -delta.where(delta < 0, 0)
 
-    # **使用指数加权移动平均 (EMA)**
     avg_gain = gain.ewm(span=window, adjust=False).mean()
     avg_loss = loss.ewm(span=window, adjust=False).mean()
 
     rs = avg_gain / avg_loss
     rsi = 100 - (100 / (1 + rs))
 
-    # **防止 avg_loss 为 0 导致 NaN**
-    rsi = np.where(avg_loss == 0, 100, rsi)
+    rsi = np.where(avg_loss == 0, 100, rsi)  # 防止 avg_loss 为 0 导致 NaN
 
     return pd.Series(rsi, index=data.index)
 
+def calculate_rsi_for_multiple_windows(stock_data):
+    """
+    计算多个窗口期的 RSI 值并返回
 
-def generate_operation_suggestion(rsi_values, window_list):
+    参数:
+    stock_data (pd.DataFrame): 股票数据，包含收盘价
+    window_list (list): RSI 窗口期列表，默认为配置文件中的窗口期
+
+    返回:
+    dict: 包含多个 RSI 序列的字典
+    """
+    window_list = RSI_CONFIG["window_list"]  # 读取配置中的窗口期
+
+    return {window: calculate_rsi(stock_data['close'], window) for window in window_list}
+
+def plot_multiple_rsi(stock_data, rsi_values):
+    """
+    绘制多个周期的 RSI 图表
+
+    参数:
+    stock_data (pd.DataFrame): 股票数据，包含收盘价
+    rsi_values (dict): 各个周期的 RSI 值（字典形式）
+    """
+    fig, ax1 = plt.subplots(figsize=(12, 6))
+
+    ax1.plot(stock_data.index, stock_data['close'], label='Stock Price', color='blue')
+    ax1.set_title('Stock Price and RSI', fontsize=14)
+    ax1.set_ylabel('Stock Price', color='blue')
+    ax1.legend(loc='upper left')
+
+    ax2 = ax1.twinx()
+    colors = ['orange', 'green', 'red', 'purple']
+
+    for i, (window, rsi) in enumerate(rsi_values.items()):
+        ax2.plot(rsi.index, rsi, label=f'RSI ({window}-day)', color=colors[i % len(colors)])
+
+    ax2.axhline(y=RSI_CONFIG["overbought"], color='r', linestyle='--', label='Overbought')
+    ax2.axhline(y=RSI_CONFIG["oversold"], color='g', linestyle='--', label='Oversold')
+    ax2.set_ylabel('RSI', color='orange')
+    ax2.legend(loc='upper right')
+
+    plt.tight_layout()
+    plt.show()
+
+def generate_operation_suggestion(rsi_values):
     """
     根据多个周期的 RSI 值生成操作建议
 
     参数:
     rsi_values (dict): 含有多个周期 RSI 值的字典
-    window_list (list): RSI 窗口期列表
 
     返回:
     str: 操作建议
     """
-    latest_rsi_values = {window: rsi_values[window].iloc[-1] for window in window_list}
+    latest_rsi_values = {window: rsi.iloc[-1] for window, rsi in rsi_values.items()}
 
-    overbought = 70
-    oversold = 30
+    overbought = RSI_CONFIG["overbought"]
+    oversold = RSI_CONFIG["oversold"]
 
-    buy_count = 0
-    sell_count = 0
+    buy_count = sum(1 for rsi in latest_rsi_values.values() if rsi < oversold)
+    sell_count = sum(1 for rsi in latest_rsi_values.values() if rsi > overbought)
 
-    # 分析每个周期的 RSI 并统计买入和卖出建议数量
-    for window, rsi in latest_rsi_values.items():
-        if rsi > overbought:
-            sell_count += 1
-        elif rsi < oversold:
-            buy_count += 1
+    # 短期与长期趋势判断
+    short_term_rsi = latest_rsi_values[min(latest_rsi_values)]
+    long_term_rsi = latest_rsi_values[max(latest_rsi_values)]
 
-    # 判断是否短期和长期 RSI 一致
-    if latest_rsi_values[window_list[0]] > overbought and latest_rsi_values[window_list[-1]] > overbought:
+    if short_term_rsi > overbought and long_term_rsi > overbought:
         sell_count += 1
-    elif latest_rsi_values[window_list[0]] < oversold and latest_rsi_values[window_list[-1]] < oversold:
+    elif short_term_rsi < oversold and long_term_rsi < oversold:
         buy_count += 1
 
-    # 根据买入和卖出建议数量给出最终建议
     if buy_count > sell_count:
         return "买入"
     elif sell_count > buy_count:
         return "卖出"
-    else:
-        return "观望"
-
-
+    return "观望"
 

@@ -1,60 +1,59 @@
 import pandas as pd
 import numpy as np
+from stock.data.config import ADX_CONFIG  # 从配置文件导入参数
 
 
-def calculate_dm(high, low, period=14):
+def calculate_dm(high, low):
     """
     计算方向运动指标（DM）
 
     参数:
     high (pd.Series): 最高价序列
     low (pd.Series): 最低价序列
-    period (int): 计算周期，默认为 14
 
     返回:
     +DM (pd.Series): 正方向运动指标
     -DM (pd.Series): 负方向运动指标
     """
+    period = ADX_CONFIG['PERIOD']
+
     prev_high = high.shift(1)
     prev_low = low.shift(1)
 
-    plus_dm = ((high > prev_high) & (low > prev_low)).astype(int) * (high - prev_high)
-    minus_dm = ((low < prev_low) & (high < prev_high)).astype(int) * (prev_low - low)
+    plus_dm = np.where((high > prev_high) & (low > prev_low), high - prev_high, 0)
+    minus_dm = np.where((low < prev_low) & (high < prev_high), prev_low - low, 0)
 
-    plus_dm_smoothed = plus_dm.rolling(window=period).sum()
-    minus_dm_smoothed = minus_dm.rolling(window=period).sum()
+    plus_dm_smoothed = pd.Series(plus_dm).rolling(window=period).sum()
+    minus_dm_smoothed = pd.Series(minus_dm).rolling(window=period).sum()
 
     return plus_dm_smoothed, minus_dm_smoothed
 
 
-def calculate_adx(stock_data, period=14):
+def calculate_adx(stock_data):
     """
     计算平均趋向指数（ADX）
 
     参数:
     stock_data (pd.DataFrame): 股票数据，包含最高价、最低价、收盘价
-    period (int): 计算周期，默认为 14
 
     返回:
     pd.Series: ADX 值
     """
-    # 将 high, low, close 列转换为数值类型
-    stock_data['high'] = pd.to_numeric(stock_data['high'], errors='coerce')
-    stock_data['low'] = pd.to_numeric(stock_data['low'], errors='coerce')
-    stock_data['close'] = pd.to_numeric(stock_data['close'], errors='coerce')
+    period = ADX_CONFIG['PERIOD']
 
-    high = stock_data['high']
-    low = stock_data['low']
-    close = stock_data['close']
+    high = pd.to_numeric(stock_data['high'], errors='coerce')
+    low = pd.to_numeric(stock_data['low'], errors='coerce')
+    close = pd.to_numeric(stock_data['close'], errors='coerce')
 
     prev_close = close.shift(1)
+
     tr1 = high - low
     tr2 = np.abs(high - prev_close)
     tr3 = np.abs(low - prev_close)
     true_range = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
     truerange_smoothed = true_range.rolling(window=period).mean()
 
-    plus_dm, minus_dm = calculate_dm(high, low, period)
+    plus_dm, minus_dm = calculate_dm(high, low)
 
     dx_numerator = np.abs((plus_dm / truerange_smoothed) - (minus_dm / truerange_smoothed))
     dx_denominator = (plus_dm / truerange_smoothed) + (minus_dm / truerange_smoothed)
@@ -62,6 +61,7 @@ def calculate_adx(stock_data, period=14):
 
     adx = dx.rolling(window=period).mean()
     return adx
+
 
 def generate_adx_operation_suggestion(adx_data):
     """
@@ -74,13 +74,13 @@ def generate_adx_operation_suggestion(adx_data):
     str: 操作建议
     """
     latest_adx = adx_data.iloc[-1]
-    if latest_adx < 20:
+    simple_suggestion = "观望"
+
+    if latest_adx < ADX_CONFIG['WEAK_TREND_THRESHOLD']:
         detailed_suggestion = "ADX - {:.2f}, 趋势较弱，市场可能处于盘整状态，建议观望。".format(latest_adx)
-        simple_suggestion = "观望"
-    elif 20 <= latest_adx < 40:
+    elif ADX_CONFIG['WEAK_TREND_THRESHOLD'] <= latest_adx < ADX_CONFIG['MEDIUM_TREND_THRESHOLD']:
         detailed_suggestion = "ADX - {:.2f}, 趋势开始形成，可关注趋势发展。".format(latest_adx)
-        simple_suggestion = "观望"
-    elif 40 <= latest_adx < 60:
+    elif ADX_CONFIG['MEDIUM_TREND_THRESHOLD'] <= latest_adx < ADX_CONFIG['STRONG_TREND_THRESHOLD']:
         detailed_suggestion = "ADX - {:.2f}, 趋势较强，可考虑跟随趋势操作。".format(latest_adx)
         simple_suggestion = "买入"
     else:
@@ -89,4 +89,3 @@ def generate_adx_operation_suggestion(adx_data):
 
     print(detailed_suggestion)
     return simple_suggestion
-

@@ -10,6 +10,9 @@ from stock.mock_platform.combined_rate_analysis import calculate_indicators  # �
 plt.rcParams['font.sans-serif'] = ['Heiti TC']
 plt.rcParams['axes.unicode_minus'] = False
 
+"""
+主要负责调试各指标的准确度
+"""
 
 def calculate_future_return(stock_data, trade_date, future_days=[3, 5, 10]):
     """

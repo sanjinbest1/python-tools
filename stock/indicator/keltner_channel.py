@@ -1,19 +1,22 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+from stock.data.config import KELTNER_CONFIG  # 从配置文件导入参数
 
 
-def calculate_keltner_channel(stock_data, period=20, multiplier=2):
+def calculate_keltner_channel(stock_data):
     """
     计算 Keltner Channel（KC 通道）
 
     参数:
     stock_data (pd.DataFrame): 股票数据，包含最高价、最低价、收盘价
-    period (int): 计算周期，默认为 20
-    multiplier (float): 乘数，默认为 2
+    config (dict): Keltner Channel 配置参数
 
     返回:
     pd.DataFrame: 包含中轨、上轨、下轨的 DataFrame
     """
+    period = KELTNER_CONFIG["PERIOD"]
+    multiplier = KELTNER_CONFIG["MULTIPLIER"]
+
     typical_price = (stock_data['high'] + stock_data['low'] + stock_data['close']) / 3
     ema = typical_price.ewm(span=period, adjust=False).mean()
     atr = (stock_data['high'] - stock_data['low']).abs().rolling(window=period).mean()
@@ -26,6 +29,7 @@ def calculate_keltner_channel(stock_data, period=20, multiplier=2):
         'Upper_Band': upper_band,
         'Lower_Band': lower_band
     }, index=stock_data.index)
+
     return keltner_df
 
 
@@ -58,6 +62,7 @@ def plot_keltner_channel(stock_data, keltner_data):
     plt.legend(loc='best', fontsize=12)
     plt.tight_layout()
     plt.show()
+
 
 def generate_keltner_channel_operation_suggestion(keltner_data, stock_data):
     """

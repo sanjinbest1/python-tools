@@ -1,13 +1,10 @@
-from stock.simulator.dynamic_ratio_strategy import DynamicRatioStrategy
-
 class Simulation:
     """
     模拟交易类，负责执行交易并管理持仓和账户状态。
     """
-
     MIN_TRADE_QUANTITY = 100  # 最小交易单位（100股）
-    take_profit_ratio = 0.10  # 止盈比例（10%）
-    stop_loss_ratio = 0.05  # 止损比例（5%）
+    max_profit_ratio = 0.20  # 最大盈利目标（20%）
+    min_loss_ratio = 0.05  # 最小亏损限制（5%）
 
     def __init__(self, initial_capital):
         """
@@ -21,7 +18,39 @@ class Simulation:
         self.positions = {}  # 持仓信息 {股票代码: 持仓数量}
         self.entry_prices = {}  # 记录每只股票的买入价格 {股票代码: 买入均价}
         self.transactions = []  # 交易记录
-        self.ratio_strategy = DynamicRatioStrategy()  # 动态比例策略
+
+    def calculate_buy_ratio(self, current_price):
+        """
+        计算买入比例
+        :param current_price: 当前股票价格
+        :return: 买入比例
+        """
+        available_funds = self.capital
+        # 可以考虑使用剩余资金的一部分进行买入，假设为50%的资金进行买入
+        buy_ratio = 0.5
+        return buy_ratio
+
+    def calculate_sell_ratio(self, symbol, current_price):
+        """
+        计算卖出比例
+        :param symbol: 股票代码
+        :param current_price: 当前股票价格
+        :return: 卖出比例
+        """
+        if symbol in self.positions:
+            entry_price = self.entry_prices.get(symbol, current_price)
+            price_change = (current_price - entry_price) / entry_price
+
+            # 判断是否达到了止盈或止损条件
+            if price_change >= self.max_profit_ratio:  # 达到最大盈利目标
+                sell_ratio = 0.5  # 卖出50%的股票来锁定部分利润
+            elif price_change <= -self.min_loss_ratio:  # 达到最小亏损限制
+                sell_ratio = 0.5  # 卖出50%的股票来限制亏损
+            else:
+                sell_ratio = 0  # 未达到止盈止损标准时不卖出
+        else:
+            sell_ratio = 0  # 没有持仓时不卖出
+        return sell_ratio
 
     def execute_trade(self, date, symbol, recommendation, price):
         """
@@ -35,11 +64,9 @@ class Simulation:
         if recommendation not in ['买入', '卖出']:
             return
 
-        buy_ratio, sell_ratio = self.ratio_strategy.calculate_operation_ratio(
-            recommendation, self.calculate_account_profit(price), 0.5
-        )
-
         if recommendation == '买入':
+            buy_ratio = self.calculate_buy_ratio(price)
+
             # 计算买入数量，并保证是100的整数倍
             quantity = int((self.capital * buy_ratio // price) // self.MIN_TRADE_QUANTITY * self.MIN_TRADE_QUANTITY)
 
@@ -68,24 +95,9 @@ class Simulation:
                 })
 
         elif recommendation == '卖出':
+            sell_ratio = self.calculate_sell_ratio(symbol, price)
+
             if symbol in self.positions and self.positions[symbol] >= self.MIN_TRADE_QUANTITY:
-                current_price = price
-                entry_price = self.entry_prices.get(symbol, current_price)
-
-                # 计算当前涨跌幅
-                price_change = (current_price - entry_price) / entry_price
-
-                # 判断是否触发止盈或止损
-                if price_change >= self.take_profit_ratio:
-                    print(f"📈 止盈触发：{symbol} 当前涨幅 {price_change:.2%}，卖出")
-                elif price_change <= -self.stop_loss_ratio:
-                    print(f"📉 止损触发：{symbol} 当前跌幅 {price_change:.2%}，卖出")
-                else:
-                    # 如果没有触发止盈/止损，则按策略决定是否卖出
-                    if recommendation != '卖出':
-                        return
-
-                # 计算卖出数量，确保是100的整数倍
                 quantity_to_sell = int((self.positions[symbol] * sell_ratio) // self.MIN_TRADE_QUANTITY * self.MIN_TRADE_QUANTITY)
 
                 if quantity_to_sell >= self.MIN_TRADE_QUANTITY:  # 确保最少卖出100股
@@ -110,28 +122,6 @@ class Simulation:
                         'post_capital': post_capital
                     })
 
-    def get_portfolio_value(self, current_price, symbol):
-        """
-        计算当前持仓的总价值
-        :param current_price: 当前价格
-        :param symbol: 股票代码
-        :return: 持仓总价值
-        """
-        portfolio_value = self.capital
-        quantity = self.positions.get(symbol, 0)
-        portfolio_value += quantity * current_price
-        return portfolio_value
-
-    def calculate_account_profit(self, current_price):
-        """
-        计算账户的当前盈亏金额
-        :param current_price: 当前价格
-        :return: 账户当前盈亏金额
-        """
-        portfolio_value = sum(quantity * current_price for quantity in self.positions.values())
-        total_value = portfolio_value + self.capital
-        return total_value - self.initial_capital
-
     def get_transactions(self):
         """获取所有交易记录"""
         return self.transactions
@@ -155,3 +145,15 @@ class Simulation:
         else:
             return (f"日期: {transaction['date']}, 股票代码: {transaction['symbol']}, "
                     f"操作: 观望, 无交易发生")
+
+    def get_portfolio_value(self, current_price, symbol):
+        """
+        计算当前持仓的总价值
+        :param current_price: 当前价格
+        :param symbol: 股票代码
+        :return: 持仓总价值
+        """
+        portfolio_value = self.capital
+        quantity = self.positions.get(symbol, 0)  # 获取当前持仓的数量
+        portfolio_value += quantity * current_price  # 将持仓数量和当前价格相乘得到总价值
+        return portfolio_value

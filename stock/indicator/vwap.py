@@ -1,5 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+from stock.data.config import VWAP_CONFIG  # 从配置文件导入 VWAP 参数
 
 
 def calculate_vwap(stock_data):
@@ -14,9 +15,12 @@ def calculate_vwap(stock_data):
     """
     stock_data['close'] = pd.to_numeric(stock_data['close'], errors='coerce')
     stock_data['volume'] = pd.to_numeric(stock_data['volume'], errors='coerce')
+
+    # 计算 VWAP
     numerator = (stock_data['close'] * stock_data['volume']).cumsum()
     denominator = stock_data['volume'].cumsum()
     vwap = numerator / denominator
+
     return vwap
 
 
@@ -31,10 +35,12 @@ def plot_vwap(stock_data, vwap_data):
     plt.figure(figsize=(12, 8))
 
     # 绘制股票收盘价图
-    plt.plot(stock_data.index, stock_data['close'], label='Stock Price', color='blue', alpha=0.6, linewidth=1)
+    plt.plot(stock_data.index, stock_data['close'], label='Stock Price',
+             color='blue', alpha=0.6, linewidth=1)
 
     # 绘制 VWAP 图
-    plt.plot(vwap_data.index, vwap_data, label='VWAP', color='orange', linestyle='--', alpha=0.7, linewidth=1)
+    plt.plot(vwap_data.index, vwap_data, label='VWAP',
+             color='orange', linestyle='--', alpha=0.7, linewidth=1)
 
     plt.title('Stock Price and Volume Weighted Average Price (VWAP)', fontsize=14)
     plt.xlabel('Date', fontsize=12)
@@ -43,7 +49,6 @@ def plot_vwap(stock_data, vwap_data):
     plt.legend(loc='best', fontsize=12)
     plt.tight_layout()
     plt.show()
-
 
 def generate_vwap_operation_suggestion(stock_data, vwap_data):
     """
@@ -59,16 +64,22 @@ def generate_vwap_operation_suggestion(stock_data, vwap_data):
     latest_price = stock_data['close'].iloc[-1]
     latest_vwap = vwap_data.iloc[-1]
 
-    simple_suggestion = "观望"
-    if latest_price > latest_vwap:
-        detailed_suggestion = "VWAP - {:.2f}, 当前股价 - {:.2f}，显示多头力量较强，建议买入或持有。".format(latest_vwap, latest_price)
-        simple_suggestion = "买入"
-    elif latest_price < latest_vwap:
-        detailed_suggestion = "VWAP - {:.2f}, 当前股价 - {:.2f}，显示空头力量较强，建议卖出或观望。".format(latest_vwap, latest_price)
-        simple_suggestion = "卖出"
+    buy_threshold = VWAP_CONFIG["buy_threshold"]
+    sell_threshold = VWAP_CONFIG["sell_threshold"]
+
+    # 计算价格与 VWAP 的偏离程度
+    deviation = (latest_price - latest_vwap) / latest_vwap * 100
+
+    # 生成操作建议
+    if deviation > buy_threshold:
+        suggestion = "买入"
+        detail = f"VWAP - {latest_vwap:.2f}, 当前股价 - {latest_price:.2f}，股价高于 VWAP {deviation:.2f}%，多头力量较强，建议买入或持有。"
+    elif deviation < sell_threshold:
+        suggestion = "卖出"
+        detail = f"VWAP - {latest_vwap:.2f}, 当前股价 - {latest_price:.2f}，股价低于 VWAP {deviation:.2f}%，空头力量较强，建议卖出或观望。"
     else:
-        detailed_suggestion = "VWAP - {:.2f}, 当前股价 - {:.2f}，市场方向不明，建议观望。".format(latest_vwap, latest_price)
+        suggestion = "观望"
+        detail = f"VWAP - {latest_vwap:.2f}, 当前股价 - {latest_price:.2f}，市场方向不明，建议观望。"
 
-    print(detailed_suggestion)
-    return simple_suggestion
-
+    print(detail)
+    return suggestion

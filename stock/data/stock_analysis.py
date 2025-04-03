@@ -8,7 +8,7 @@ class StockAnalysis:
                  initial_cash = None, cost = None,
                  rsi_window_list=[5],
                  fast_period=5, slow_period=13, signal_period=5,
-                 bollinger_hands_window = 20,bollinger_hands_num_std=2
+                 bollinger_hands_window = 20,bollinger_hands_num_std=2,capital=100000
                  ):
         """
         初始化股票分析对象
@@ -26,6 +26,7 @@ class StockAnalysis:
         self.backwards_days = backwards_days
         self.initial_cash = initial_cash
         self.cost = cost
+        self.capital = capital
 
         # RSI窗口期
         self.rsi_window_list = rsi_window_list
