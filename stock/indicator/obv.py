@@ -69,6 +69,7 @@ def generate_obv_operation_suggestion(obv_data, stock_data):
     obv_trend = obv_data.diff().iloc[-1]
     price_trend = stock_data['close'].diff().iloc[-1]
 
+    detailed_suggestion = "无建议，观望"
     simple_suggestion = "观望"
     if obv_trend > 0 and price_trend > 0:
         detailed_suggestion = "OBV - {:.2f}, 收盘价变化 - {:.2f}, 市场多头力量强劲，建议买入或持有。".format(obv_trend, price_trend)
