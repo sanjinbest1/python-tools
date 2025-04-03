@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def calculate_stochastic_rsi(stock_data, k_period=14, d_period=3, smooth_k=3):
+def calculate_stochastic_rsi(stock_data, k_period=21, d_period=5, smooth_k=5):
     """
     计算随机 RSI（Stochastic RSI）指标
 
