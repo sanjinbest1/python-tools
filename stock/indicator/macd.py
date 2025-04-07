@@ -1,164 +1,164 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-from stock.data.config import MACD_CONFIG  # 从配置文件导入参数
+from stock.data.config import MACD_CONFIG
 
 
 def calculate_macd(data):
     """
-    计算MACD指标
-
-    参数:
-    data (pd.Series): 股票的收盘价数据
-
-    返回:
-    dict: 包含 'macd', 'signal', 'hist' 的字典
+    计算 MACD 指标
     """
     if not isinstance(data, pd.Series):
-        raise ValueError("输入的 data 必须是 Pandas Series 类型")
+        raise ValueError("data 必须为 pd.Series 类型")
 
-    fast_period = MACD_CONFIG["fast_period"]
-    slow_period = MACD_CONFIG["slow_period"]
-    signal_period = MACD_CONFIG["signal_period"]
+    fast = MACD_CONFIG["fast_period"]
+    slow = MACD_CONFIG["slow_period"]
+    signal = MACD_CONFIG["signal_period"]
 
-    # 计算快速和慢速EMA
-    fast_ema = data.ewm(span=fast_period, adjust=False).mean()
-    slow_ema = data.ewm(span=slow_period, adjust=False).mean()
+    ema_fast = data.ewm(span=fast, adjust=False).mean()
+    ema_slow = data.ewm(span=slow, adjust=False).mean()
 
-    # 计算MACD
-    macd = fast_ema - slow_ema
-    signal = macd.ewm(span=signal_period, adjust=False).mean()
-    hist = macd - signal
+    macd = ema_fast - ema_slow
+    signal_line = macd.ewm(span=signal, adjust=False).mean()
+    hist = macd - signal_line
 
-    # 确保返回的是 Pandas Series
-    macd = pd.Series(macd, index=data.index)
-    signal = pd.Series(signal, index=data.index)
-    hist = pd.Series(hist, index=data.index)
-
-    return {'macd': macd, 'signal': signal, 'hist': hist}
+    return macd,signal_line,hist
 
 
-def generate_macd_signal(macd, signal, cost=None):
+def generate_macd_signal(macd, signal,hist):
     """
-    根据MACD指标生成操作建议
-
-    参数:
-    - macd (pd.Series): 计算得到的MACD值
-    - signal (pd.Series): 计算得到的信号线值
-    - cost (float): 当前持仓的成本价，只有在有持仓时需要提供
-
-    返回:
-    - 操作建议字符串
+    根据 MACD 和 signal 生成更详细的交易建议
     """
+    if not isinstance(macd, pd.Series): macd = pd.Series(macd)
+    if not isinstance(signal, pd.Series): signal = pd.Series(signal)
 
-    # **数据完整性检查**
-    if not isinstance(macd, pd.Series):
-        macd = pd.Series(macd)
-    if not isinstance(signal, pd.Series):
-        signal = pd.Series(signal)
-
-    # **确保数据至少有两条**
     if len(macd) < 2 or len(signal) < 2:
         print("MACD 或 Signal 数据不足，返回'观望'")
         return "观望"
 
-    # **数据类型转换**
     macd = pd.to_numeric(macd, errors='coerce')
     signal = pd.to_numeric(signal, errors='coerce')
 
-    # **检查是否存在 NaN 值**
     if macd.isna().any() or signal.isna().any():
-        print("MACD 或 Signal 存在 NaN 值，请检查数据")
-        print("MACD:", macd.tail())
-        print("Signal:", signal.tail())
+        print("MACD 或 Signal 存在 NaN 值，返回'观望'")
         return "观望"
 
-    # **仓位状态**
-    current_position = 'empty' if cost is None else 'long'
+    latest_macd = macd.iloc[-1]
+    prev_macd = macd.iloc[-2]
+    latest_signal = signal.iloc[-1]
+    prev_signal = signal.iloc[-2]
 
-    # **计算交叉信号**
-    buy_signal = macd.iloc[-1] > signal.iloc[-1] and macd.iloc[-2] <= signal.iloc[-2]  # 黄金交叉
-    sell_signal = macd.iloc[-1] < signal.iloc[-1] and macd.iloc[-2] >= signal.iloc[-2]  # 死亡交叉
+    buy_signal = latest_macd > latest_signal and prev_macd <= prev_signal
+    sell_signal = latest_macd < latest_signal and prev_macd >= prev_signal
 
-    # **默认建议**
-    simple_suggestion = "观望"
-    detailed_suggestion = "MACD - {:.2f}, 观望，无明显信号。".format(macd.iloc[-1])
+    suggestion = "观望"
+    explanation = ""
+    strategy = ""
+    risk = ""
 
-    # **交易逻辑**
-    if current_position == 'empty':
-        if buy_signal:
-            detailed_suggestion = "MACD - {:.2f}, 买入信号，建议在当前价格买入。".format(macd.iloc[-1])
-            simple_suggestion = "买入"
-    elif current_position == 'long':
-        if sell_signal:
-            detailed_suggestion = "MACD - {:.2f}, 卖出信号，建议卖出，市场出现死亡交叉。".format(macd.iloc[-1])
-            simple_suggestion = "卖出"
-        elif macd.iloc[-1] < 0:
-            detailed_suggestion = "MACD - {:.2f}, 市场下行信号，考虑止损或卖出。".format(macd.iloc[-1])
-            simple_suggestion = "卖出"
-        else:
-            detailed_suggestion = "MACD - {:.2f}, 持有信号，市场处于上涨趋势中，建议继续持有。".format(macd.iloc[-1])
+    if buy_signal:
+        suggestion = "买入"
+        explanation = "MACD 向上突破 Signal 线，形成“黄金交叉”，通常被视为上涨信号。"
+        strategy = (
+            "- 可在当前价格小仓位试探性建仓，若后续价格继续上行可加仓。\n"
+            "- 可结合成交量或布林带突破确认强势上涨。"
+        )
+        risk = (
+            "- 若价格回踩黄金交叉位置或MA支撑位失守，应果断止损。\n"
+            "- 设置止损线建议为入场价下方 3%-5%。"
+        )
 
-    print(detailed_suggestion)
-    return simple_suggestion
+    elif sell_signal:
+        suggestion = "卖出"
+        explanation = "MACD 向下跌破 Signal 线，形成“死亡交叉”，通常被视为下跌预警信号。"
+        strategy = (
+            "- 考虑减仓或平仓，防止利润回吐或亏损扩大。\n"
+            "- 如有空头策略，可尝试布局做空。"
+        )
+        risk = (
+            "- 若信号为假突破，可设置回补止损线。\n"
+            "- 避免在强支撑位盲目追空。"
+        )
+
+    elif latest_macd < 0:
+        suggestion = "卖出"
+        explanation = "MACD 位于零轴下方，表示整体市场偏弱。"
+        strategy = (
+            "- 若已持有股票，应考虑减仓或等待反弹卖出。\n"
+            "- 不建议在该位置轻易抄底，除非有其他强支撑。"
+        )
+        risk = (
+            "- 空头趋势中反弹较弱，建议轻仓谨慎操作。\n"
+            "- 止损线应设置在前期低点或5%以内。"
+        )
+
+    else:
+        suggestion = "观望"
+        explanation = "MACD 虽然在零轴上方，但未出现明显交叉信号。趋势尚不明朗。"
+        strategy = (
+            "- 建议持仓者继续持有，关注后续是否出现明确交叉。\n"
+            "- 若股价沿趋势缓慢上涨，可小仓位跟进。"
+        )
+        risk = (
+            "- 缺乏量能配合的上涨信号可靠性差。\n"
+            "- 注意回调信号，设置动态止盈。"
+        )
+
+    print(f"信号解释：{explanation}\n"
+          f"策略建议：\n{strategy}\n"
+          f"风险提示：\n{risk}\n"
+          f"📌 操作建议：{suggestion}")
+    print("-----------------------------------------------------------------------------------------------------")
+
+    return suggestion
 
 
-def plot_macd_with_signal(data, macd_dict, cost=None, config=MACD_CONFIG, time_period=None):
+
+def plot_macd_with_signal(price, macd_dict, time_period=None):
     """
-    绘制MACD图，并显示操作建议
-    参数:
-    - data (pd.Series): 股票的收盘价数据
-    - macd_dict (dict): 包含 'macd', 'signal', 'hist' 的字典
-    - cost (float): 当前持仓的成本价，只有在有持仓时需要提供
-    - time_period (int): 绘制的时间段，默认为None表示全部数据
+    绘制 MACD 图表
     """
-
-    fast_period = config["fast_period"]
-    slow_period = config["slow_period"]
-    signal_period = config["signal_period"]
-
     if time_period:
-        # 根据指定的时间段来选择数据
-        data = data.tail(time_period)
-        macd_dict['macd'] = macd_dict['macd'].tail(time_period)
-        macd_dict['signal'] = macd_dict['signal'].tail(time_period)
-        macd_dict['hist'] = macd_dict['hist'].tail(time_period)
+        price = price.tail(time_period)
+        for key in macd_dict:
+            macd_dict[key] = macd_dict[key].tail(time_period)
 
-    # 使用数据的日期索引来绘制X轴
     plt.figure(figsize=(12, 8))
 
-    # 绘制股价图
+    # 价格图
     plt.subplot(3, 1, 1)
-    plt.plot(data.index, data, label='Stock Price', color='blue')  # 使用data的index作为X轴
-    plt.title('Stock Price')
+    plt.plot(price.index, price, label='Price', color='blue')
+    plt.title("Stock Price")
     plt.legend()
 
-    # 绘制MACD图
+    # MACD 图
     plt.subplot(3, 1, 2)
-    plt.plot(macd_dict['macd'].index, macd_dict['macd'], label=f'MACD ({fast_period},{slow_period},{signal_period})')  # 使用macd的index作为X轴
-    plt.plot(macd_dict['signal'].index, macd_dict['signal'], label=f'Signal ({signal_period})', linestyle='--')
-    plt.bar(macd_dict['hist'].index, macd_dict['hist'], label='MACD Histogram', alpha=0.3)
-    plt.title(f'MACD ({fast_period},{slow_period},{signal_period})')
+    plt.plot(macd_dict['macd'].index, macd_dict['macd'], label='MACD', color='purple')
+    plt.plot(macd_dict['signal'].index, macd_dict['signal'], label='Signal', linestyle='--', color='orange')
+    plt.bar(macd_dict['hist'].index, macd_dict['hist'], label='Histogram', color='gray', alpha=0.4)
+
+    # 高亮最新交叉信号
+    macd = macd_dict["macd"]
+    signal = macd_dict["signal"]
+    color = "gray"
+    if macd.iloc[-1] > signal.iloc[-1] and macd.iloc[-2] <= signal.iloc[-2]:
+        color = "green"
+    elif macd.iloc[-1] < signal.iloc[-1] and macd.iloc[-2] >= signal.iloc[-2]:
+        color = "red"
+
+    plt.scatter(macd.index[-1], macd.iloc[-1], color=color, s=100, label='Latest Signal')
+    plt.title("MACD Indicator")
     plt.legend()
 
     plt.tight_layout()
     plt.show()
 
-    # 生成操作建议
-    signal_advice = generate_macd_signal(macd_dict['macd'], macd_dict['signal'], cost=cost)
-    return signal_advice
+    return generate_macd_signal(macd, signal)
 
 
-# **测试代码**
+# 示例运行
 if __name__ == "__main__":
-    # 生成示例数据
     dates = pd.date_range(start="2024-01-01", periods=100, freq='D')
-    prices = pd.Series([100 + i + (i % 5) * 2 for i in range(100)], index=dates)  # 生成模拟股价数据
+    prices = pd.Series([100 + i + (i % 5) * 2 for i in range(100)], index=dates)
 
-    # 计算MACD
-    macd_results = calculate_macd(prices)
-
-    # 生成MACD交易信号
-    signal = generate_macd_signal(macd_results['macd'], macd_results['signal'])
-
-    # 绘制MACD图
-    plot_macd_with_signal(prices, macd_results)
+    macd_data = calculate_macd(prices)
+    signal = plot_macd_with_signal(prices, macd_data)

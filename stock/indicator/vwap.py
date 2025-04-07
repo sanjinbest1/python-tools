@@ -16,6 +16,10 @@ def calculate_vwap(stock_data):
     stock_data['close'] = pd.to_numeric(stock_data['close'], errors='coerce')
     stock_data['volume'] = pd.to_numeric(stock_data['volume'], errors='coerce')
 
+    # 检查数据有效性
+    if stock_data['close'].isnull().any() or stock_data['volume'].isnull().any():
+        raise ValueError("数据中包含无效的收盘价或成交量，请检查输入数据。")
+
     # 计算 VWAP
     numerator = (stock_data['close'] * stock_data['volume']).cumsum()
     denominator = stock_data['volume'].cumsum()
@@ -40,7 +44,7 @@ def plot_vwap(stock_data, vwap_data):
 
     # 绘制 VWAP 图
     plt.plot(vwap_data.index, vwap_data, label='VWAP',
-             color='orange', linestyle='--', alpha=0.7, linewidth=1)
+             color='orange', linestyle='--', alpha=0.7, linewidth=2)
 
     plt.title('Stock Price and Volume Weighted Average Price (VWAP)', fontsize=14)
     plt.xlabel('Date', fontsize=12)
@@ -50,9 +54,10 @@ def plot_vwap(stock_data, vwap_data):
     plt.tight_layout()
     plt.show()
 
+
 def generate_vwap_operation_suggestion(stock_data, vwap_data):
     """
-    根据 VWAP 指标生成操作建议
+    根据 VWAP 指标生成详细操作建议
 
     参数:
     stock_data (pd.DataFrame): 股票数据，包含收盘价
@@ -61,25 +66,42 @@ def generate_vwap_operation_suggestion(stock_data, vwap_data):
     返回:
     str: 操作建议
     """
+    # 获取最新的收盘价和 VWAP 值
     latest_price = stock_data['close'].iloc[-1]
     latest_vwap = vwap_data.iloc[-1]
 
-    buy_threshold = VWAP_CONFIG["buy_threshold"]
-    sell_threshold = VWAP_CONFIG["sell_threshold"]
+    # 配置文件中的买入和卖出阈值
+    buy_threshold = VWAP_CONFIG.get("buy_threshold", 0.5)  # 默认值为 0.5%
+    sell_threshold = VWAP_CONFIG.get("sell_threshold", -0.5)  # 默认值为 -0.5%
 
-    # 计算价格与 VWAP 的偏离程度
+    # 计算价格与 VWAP 的偏离程度（百分比）
     deviation = (latest_price - latest_vwap) / latest_vwap * 100
 
-    # 生成操作建议
+    # 初始化操作建议
     if deviation > buy_threshold:
         suggestion = "买入"
-        detail = f"VWAP - {latest_vwap:.2f}, 当前股价 - {latest_price:.2f}，股价高于 VWAP {deviation:.2f}%，多头力量较强，建议买入或持有。"
+        detailed_suggestion = (
+            f"VWAP - {latest_vwap:.2f}, 当前股价 - {latest_price:.2f}，"
+            f"股价高于 VWAP {deviation:.2f}%，显示市场的多头力量较强，价格有上涨潜力。\n"
+            "📌建议：市场处于上涨趋势，考虑买入或继续持有，顺势而为。"
+        )
     elif deviation < sell_threshold:
         suggestion = "卖出"
-        detail = f"VWAP - {latest_vwap:.2f}, 当前股价 - {latest_price:.2f}，股价低于 VWAP {deviation:.2f}%，空头力量较强，建议卖出或观望。"
+        detailed_suggestion = (
+            f"VWAP - {latest_vwap:.2f}, 当前股价 - {latest_price:.2f}，"
+            f"股价低于 VWAP {deviation:.2f}%，显示市场的空头力量较强，价格可能会下行。\n"
+            "📌建议：市场处于下行趋势，考虑卖出或减仓，避免亏损。"
+        )
     else:
         suggestion = "观望"
-        detail = f"VWAP - {latest_vwap:.2f}, 当前股价 - {latest_price:.2f}，市场方向不明，建议观望。"
+        detailed_suggestion = (
+            f"VWAP - {latest_vwap:.2f}, 当前股价 - {latest_price:.2f}，"
+            "价格接近 VWAP，市场方向不明，短期内难以判断趋势。\n"
+            "📌建议：维持观望，等待更明确的信号出现。"
+        )
 
-    print(detail)
+    # 输出详细的操作建议
+    print(detailed_suggestion)
+    print("-----------------------------------------------------------------------------------------------------")
+
     return suggestion

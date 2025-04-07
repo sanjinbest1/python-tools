@@ -1,136 +1,89 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-from stock.data.config import BOLLINGER_CONFIG  # 从配置文件导入参数
+from stock.data.config import BOLLINGER_CONFIG  # 配置中应包含 WINDOW 和 NUM_STD
 
 
-def calculate_bollinger_bands(data):
+def calculate_bollinger_bands(data: pd.DataFrame) -> pd.DataFrame:
     """
-    计算布林带指标
-
-    参数:
-    data (pd.DataFrame): 包含收盘价的 DataFrame
-
-    返回:
-    pd.DataFrame: 包含布林带指标的 DataFrame
+    计算布林带指标（含中轨、上下轨）
     """
     window = BOLLINGER_CONFIG["WINDOW"]
     num_std = BOLLINGER_CONFIG["NUM_STD"]
 
-    data.loc[:, "SMA"] = data["close"].rolling(window=window).mean()
-    data.loc[:, "std"] = data["close"].rolling(window=window).std()
+    sma = data["close"].rolling(window=window).mean()
+    std = data["close"].rolling(window=window).std()
 
-    data.loc[:, "Upper_Band"] = data["SMA"] + (data["std"] * num_std)
-    data.loc[:, "Lower_Band"] = data["SMA"] - (data["std"] * num_std)
-
-    return data
-
-
-def generate_bollinger_signals(data):
-    """
-    生成布林带买卖信号
-
-    参数:
-    data (pd.DataFrame): 包含布林带指标的 DataFrame
-
-    返回:
-    pd.DataFrame: 包含布林带买卖信号的 DataFrame
-    """
-    data.loc[:, "Buy_Signal"] = data["close"] < data["Lower_Band"]
-    data.loc[:, "Sell_Signal"] = data["close"] > data["Upper_Band"]
-
-    return data
-
-
-def generate_bollinger_operations(df):
-    """
-    根据布林带信号生成操作建议（中文版本）
-
-    参数:
-    df (pd.DataFrame): 包含布林带和信号的 DataFrame
-
-    返回:
-    str: 操作建议
-    """
-    latest_data = df.iloc[-1]  # 获取最新一条数据
-
-    # 初始化操作建议
-    simple_operation = "观望"
-    detailed_operation = (
-        f"收盘价 - {latest_data['close']:.2f}, 下轨 - {latest_data['Lower_Band']:.2f}, 上轨 - {latest_data['Upper_Band']:.2f}, "
-        "观望：当前价格位于布林带区间内，暂无明显买卖信号。"
+    return data.assign(
+        SMA=sma,
+        Upper_Band=sma + num_std * std,
+        Lower_Band=sma - num_std * std
     )
 
-    if latest_data["close"] < latest_data["Lower_Band"]:
-        detailed_operation = (
-            f"收盘价 - {latest_data['close']:.2f}, 下轨 - {latest_data['Lower_Band']:.2f}, 上轨 - {latest_data['Upper_Band']:.2f}, "
-            "买入：当前价格低于布林带下轨，可能存在超卖，建议关注买入机会。"
+
+def generate_bollinger_signals(data: pd.DataFrame) -> pd.DataFrame:
+    """
+    生成布林带买卖信号（包含突破上下轨）
+    """
+    buy_signal = (data["close"] < data["Lower_Band"]) & (data["close"].shift(1) >= data["Lower_Band"].shift(1))
+    sell_signal = (data["close"] > data["Upper_Band"]) & (data["close"].shift(1) <= data["Upper_Band"].shift(1))
+
+    return data.assign(
+        Buy_Signal=buy_signal,
+        Sell_Signal=sell_signal
+    )
+
+
+def generate_bollinger_operations(df: pd.DataFrame) -> str:
+    """
+    基于最新布林带状态生成操作建议
+    """
+    latest = df.iloc[-1]
+
+    suggestion = f"布林带指标：当前收盘价为 {latest['close']:.2f}，下轨 {latest['Lower_Band']:.2f}，上轨 {latest['Upper_Band']:.2f}。\n"
+
+    if latest["Buy_Signal"]:
+        suggestion += (
+            "\n价格刚刚跌破下轨，可能出现超卖反弹。\n"
+            "📌 建议：关注反弹确认信号，适当低吸试探建仓，可设置小止损保护。"
         )
-        simple_operation = "买入"
-    elif latest_data["close"] > latest_data["Upper_Band"]:
-        detailed_operation = (
-            f"收盘价 - {latest_data['close']:.2f}, 下轨 - {latest_data['Lower_Band']:.2f}, 上轨 - {latest_data['Upper_Band']:.2f}, "
-            "卖出：当前价格高于布林带上轨，可能存在超买，建议关注卖出机会。"
+        return print(suggestion + "\n操作建议：买入\n" + "-" * 100) or "买入"
+
+    elif latest["Sell_Signal"]:
+        suggestion += (
+            "\n价格刚刚突破上轨，可能为短期超买。\n"
+            "📌 建议：关注回调信号或滞涨迹象，可逢高减仓或落袋为安。"
         )
-        simple_operation = "卖出"
+        return print(suggestion + "\n操作建议：卖出\n" + "-" * 100) or "卖出"
 
-    print(detailed_operation)
-    return simple_operation
+    else:
+        suggestion += (
+            "\n价格位于布林带中轨之间，市场波动有限，方向尚不明确。\n"
+            "📌 建议：继续观望，待价格突破上下轨或配合其他指标判断。"
+        )
+        return print(suggestion + "\n操作建议：观望\n" + "-" * 100) or "观望"
 
 
-def plot_bollinger_bands(data):
+def plot_bollinger_bands(data: pd.DataFrame):
     """
-    绘制布林带图表（包括收盘价、中轨线、上轨线、下轨线以及买入卖出信号）
-
-    参数:
-    data (pd.DataFrame): 包含布林带及信号的 DataFrame
+    绘制布林带与买卖信号图
     """
-    plt.figure(figsize=(12, 8))  # 设置图表尺寸
+    plt.figure(figsize=(14, 7))
+    plt.plot(data["close"], label="Close", color="black", lw=1)
+    plt.plot(data["SMA"], label=f"SMA ({BOLLINGER_CONFIG['WINDOW']})", color="orange", lw=1.2)
+    plt.plot(data["Upper_Band"], label="Upper Band", color="red", linestyle="--")
+    plt.plot(data["Lower_Band"], label="Lower Band", color="green", linestyle="--")
 
-    # 绘制收盘价
-    plt.plot(data["close"], label="Close Price", color="blue", alpha=0.6, linewidth=1)
+    # 信号标记
+    plt.scatter(data.index[data["Buy_Signal"]], data["close"][data["Buy_Signal"]],
+                marker="^", color="green", label="Buy Signal", s=100)
+    plt.scatter(data.index[data["Sell_Signal"]], data["close"][data["Sell_Signal"]],
+                marker="v", color="red", label="Sell Signal", s=100)
 
-    # 绘制移动平均线
-    plt.plot(data["SMA"], label=f"SMA ({BOLLINGER_CONFIG['WINDOW']})", color="orange", alpha=0.7, linestyle="-", linewidth=1)
-
-    # 绘制布林带上下轨
-    plt.plot(data["Upper_Band"], label="Upper Band", color="red", linestyle="--", alpha=0.6, linewidth=1)
-    plt.plot(data["Lower_Band"], label="Lower Band", color="green", linestyle="--", alpha=0.6, linewidth=1)
-
-    # 绘制买入信号
-    plt.scatter(
-        data.index[data["Buy_Signal"]],
-        data["close"][data["Buy_Signal"]],
-        label="Buy Signal",
-        marker="^",
-        color="g",
-        alpha=1,
-        s=100,
-    )
-
-    # 绘制卖出信号
-    plt.scatter(
-        data.index[data["Sell_Signal"]],
-        data["close"][data["Sell_Signal"]],
-        label="Sell Signal",
-        marker="v",
-        color="r",
-        alpha=1,
-        s=100,
-    )
-
-    # 设置图表标题
-    plt.title("Bollinger Bands with Buy/Sell Signals", fontsize=16)
-
-    # 设置X轴和Y轴标签
-    plt.xlabel("Date", fontsize=12)
-    plt.ylabel("Price", fontsize=12)
-
-    # 旋转X轴刻度
+    plt.title("📈 Bollinger Bands with Buy/Sell Signals", fontsize=16)
+    plt.xlabel("Date")
+    plt.ylabel("Price")
+    plt.legend()
+    plt.grid(True, linestyle="--", alpha=0.3)
     plt.xticks(rotation=45)
-
-    # 添加图例
-    plt.legend(loc="best", fontsize=12)
-
-    # 调整布局，避免重叠
     plt.tight_layout()
     plt.show()
