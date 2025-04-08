@@ -1,34 +1,52 @@
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 from stock.data.config import OBV_CONFIG  # 从配置文件导入参数
 
-def calculate_obv(stock_data, initial_value=None):
+def calculate_obv(stock_data, initial_value=None, strict=False):
     """
     计算能量潮（OBV）指标
 
     参数:
-    stock_data (pd.DataFrame): 股票数据，包含收盘价和成交量
-    initial_value (float): OBV初始值，默认为配置中的初始值
+    stock_data (pd.DataFrame): 股票数据，包含 'close' 和 'volume' 列
+    initial_value (float): OBV 初始值（默认读取配置）
+    strict (bool): 是否严格校验缺失数据，默认 False 为自动填补
 
     返回:
-    pd.Series: OBV值
+    pd.Series: OBV 序列
     """
+
     if initial_value is None:
-        initial_value = OBV_CONFIG["obv_initial_value"]  # 读取配置初始值
+        initial_value = OBV_CONFIG.get("obv_initial_value", 0)
 
-    # 检查数据是否完整
-    if stock_data['close'].isnull().any() or stock_data['volume'].isnull().any():
-        raise ValueError("股票数据中存在缺失值，请检查数据完整性。")
+    # 检查关键列是否存在
+    required_cols = ['close', 'volume']
+    for col in required_cols:
+        if col not in stock_data.columns:
+            raise ValueError(f"数据中缺失必要列: {col}")
 
-    # 计算收盘价变化量和成交量
-    delta = stock_data['close'].diff()  # 收盘价变化
-    volume = stock_data['volume'].fillna(0)  # 确保成交量为0，而不是NaN
+    # 严格模式下报错退出
+    if strict:
+        if stock_data['close'].isnull().any() or stock_data['volume'].isnull().any():
+            missing = stock_data[stock_data[['close', 'volume']].isnull().any(axis=1)]
+            raise ValueError(f"数据存在缺失值:\n{missing}")
 
-    # 向量化计算 OBV
-    obv = (delta > 0) * volume - (delta < 0) * volume
-    obv = obv.cumsum() + initial_value  # 累加 OBV，并加上初始值
+    # 自动填补缺失值
+    stock_data = stock_data.copy()
+    stock_data['close'] = stock_data['close'].ffill()
+    stock_data['volume'] = stock_data['volume'].fillna(0)
+
+    # 收盘价变化（向后差）
+    delta = stock_data['close'].diff()
+
+    # OBV 逻辑向量化处理：上涨加量，下跌减量，持平不变
+    obv_change = np.where(delta > 0, stock_data['volume'],
+                          np.where(delta < 0, -stock_data['volume'], 0))
+
+    obv = np.cumsum(obv_change) + initial_value
 
     return pd.Series(obv, index=stock_data.index)
+
 
 def plot_obv(stock_data, obv_data):
     """

@@ -1,10 +1,9 @@
 from stock.data.data_fetcher import DataFetcher
-from datetime import datetime, timedelta
-from stock.simulator.stock_simulator import Simulation
+
 
 class StockAnalysis:
 
-    def __init__(self, ticker, start_date, end_date):
+    def __init__(self, ticker, start_date, end_date,stock_data_forward_days = 0):
         """
         初始化股票分析对象
 
@@ -18,6 +17,8 @@ class StockAnalysis:
         self.start_date = start_date
         self.end_date = end_date
 
-        self.data_fetcher = DataFetcher(ticker, start_date, end_date)
+        self.data_fetcher = DataFetcher(ticker, start_date, end_date,stock_data_forward_days)
 
         self.last_price=None
+
+        self.stock_data_forward_days = stock_data_forward_days

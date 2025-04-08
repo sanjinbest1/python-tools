@@ -3,29 +3,37 @@ import matplotlib.pyplot as plt
 from stock.data.config import VWAP_CONFIG  # 从配置文件导入 VWAP 参数
 
 
-def calculate_vwap(stock_data):
+def calculate_vwap(stock_data, strict=False):
     """
-    计算成交量加权移动平均（VWAP）指标
+    计算成交量加权平均价格（VWAP）
 
     参数:
-    stock_data (pd.DataFrame): 股票数据，包含收盘价和成交量
+    stock_data (pd.DataFrame): 包含 'close' 和 'volume' 列的股票数据
+    strict (bool): 严格模式，若为 True 则遇到 NaN 会报错，默认自动填补
 
     返回:
-    pd.Series: VWAP值
+    pd.Series: VWAP 序列
     """
+    stock_data = stock_data.copy()
     stock_data['close'] = pd.to_numeric(stock_data['close'], errors='coerce')
     stock_data['volume'] = pd.to_numeric(stock_data['volume'], errors='coerce')
 
-    # 检查数据有效性
-    if stock_data['close'].isnull().any() or stock_data['volume'].isnull().any():
-        raise ValueError("数据中包含无效的收盘价或成交量，请检查输入数据。")
+    if strict:
+        if stock_data['close'].isnull().any() or stock_data['volume'].isnull().any():
+            missing = stock_data[stock_data[['close', 'volume']].isnull().any(axis=1)]
+            raise ValueError(f"VWAP 计算中发现缺失数据:\n{missing}")
 
-    # 计算 VWAP
-    numerator = (stock_data['close'] * stock_data['volume']).cumsum()
-    denominator = stock_data['volume'].cumsum()
-    vwap = numerator / denominator
+    # 自动填补缺失数据
+    stock_data['close'] = stock_data['close'].ffill()
+    stock_data['volume'] = stock_data['volume'].fillna(0)
 
-    return vwap
+    # 计算 VWAP = ∑(成交额) / ∑(成交量)
+    cumulative_value = (stock_data['close'] * stock_data['volume']).cumsum()
+    cumulative_volume = stock_data['volume'].cumsum()
+
+    vwap = cumulative_value / cumulative_volume
+    return pd.Series(vwap, index=stock_data.index)
+
 
 
 def plot_vwap(stock_data, vwap_data):

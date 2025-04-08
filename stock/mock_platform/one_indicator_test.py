@@ -65,7 +65,7 @@ def backtest(stock):
         data_for_calculation = stock_data[one_year_ago_date: trade_date.strftime('%Y-%m-%d')].copy()
 
         if len(data_for_calculation) > 50:  # 确保有足够数据计算
-            indicator_signals = calculate_indicators(stock, data_for_calculation)  # 获取各个指标的建议
+            indicator_signals = calculate_indicators( data_for_calculation)  # 获取各个指标的建议
         else:
             continue  # 数据不足，跳过该交易日
 
@@ -177,15 +177,13 @@ def generate_stock_weights(stock_list):
 
 
 if __name__ == "__main__":
-    stock_tickers = ['sz.300377']  # 示例股票列表
+    stock_tickers = ['sh.600570']  # 示例股票列表
     start_date = '2021-01-01'  # 统一回测起始时间
-    end_date = '2025-04-02'  # 统一回测结束时间
+    end_date = '2025-04-08'  # 统一回测结束时间
     window_list = [6, 24]  # RSI 窗口
 
     stock_list = [
-        StockAnalysis(ticker, start_date, end_date, forward_days=365, initial_cash=100000,
-                      rsi_window_list=window_list,
-                      fast_period=12, slow_period=26, signal_period=9)
+        StockAnalysis(ticker, start_date, end_date)
         for ticker in stock_tickers
     ]
 

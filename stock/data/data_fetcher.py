@@ -2,19 +2,29 @@ import yfinance as yf
 import baostock as bs
 import akshare as ak
 import pandas as pd
+import datetime
 
 class DataFetcher:
-    def __init__(self, ticker, start_date, end_date):
+
+    def __init__(self, ticker, start_date, end_date, forward_days=0):
         """
         初始化数据获取器
         :param ticker: 股票代码（美股: "AAPL"，A股: "sh.600000"，港股: "00700"）
         :param start_date: 开始日期（YYYY-MM-DD）
         :param end_date: 结束日期（YYYY-MM-DD）
+        :param forward_days: 向未来推移的天数，默认为0
         """
         self.ticker = ticker
-        self.start_date = start_date
         self.end_date = end_date
 
+        # 重新计算start_date，如果forward_days不为0，则向前推移start_date
+        if forward_days != 0:
+            start_date_obj = datetime.datetime.strptime(start_date, "%Y-%m-%d")
+            self.start_date = (start_date_obj - datetime.timedelta(days=forward_days)).strftime("%Y-%m-%d")
+        else:
+            self.start_date = start_date
+
+        print(f"Start Date: {self.start_date}, End Date: {self.end_date}")
     def fetch_data(self):
         """
         根据股票代码自动选择数据源，返回统一格式的股票数据。
