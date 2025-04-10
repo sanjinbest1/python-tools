@@ -82,7 +82,7 @@ def generate_obv_operation_suggestion(obv_data, stock_data):
     stock_data (pd.DataFrame): 股票数据，包含收盘价
 
     返回:
-    str: 操作建议
+    dict: 包含操作建议和详细建议的字典
     """
     # OBV 和收盘价的变化趋势
     obv_trend = obv_data.diff().iloc[-1]
@@ -96,7 +96,7 @@ def generate_obv_operation_suggestion(obv_data, stock_data):
     detailed_suggestion = "无建议，观望"
     simple_suggestion = "观望"
 
-    # 如果 OBV 增加且股价也上涨
+    # OBV 增加且股价也上涨
     if obv_trend > threshold_positive and price_trend > 0:
         detailed_suggestion = (
             f"OBV - {obv_trend:.2f}, 收盘价变化 - {price_trend:.2f}, "
@@ -105,7 +105,7 @@ def generate_obv_operation_suggestion(obv_data, stock_data):
         )
         simple_suggestion = "买入"
 
-    # 如果 OBV 增加但股价下跌
+    # OBV 增加但股价下跌
     elif obv_trend > threshold_positive and price_trend < 0:
         detailed_suggestion = (
             f"OBV - {obv_trend:.2f}, 收盘价变化 - {price_trend:.2f}, "
@@ -114,7 +114,7 @@ def generate_obv_operation_suggestion(obv_data, stock_data):
         )
         simple_suggestion = "买入"
 
-    # 如果 OBV 下降且股价上涨
+    # OBV 下降且股价上涨
     elif obv_trend < threshold_negative and price_trend > 0:
         detailed_suggestion = (
             f"OBV - {obv_trend:.2f}, 收盘价变化 - {price_trend:.2f}, "
@@ -123,7 +123,7 @@ def generate_obv_operation_suggestion(obv_data, stock_data):
         )
         simple_suggestion = "卖出"
 
-    # 如果 OBV 下降且股价下跌
+    # OBV 下降且股价下跌
     elif obv_trend < threshold_negative and price_trend < 0:
         detailed_suggestion = (
             f"OBV - {obv_trend:.2f}, 收盘价变化 - {price_trend:.2f}, "
@@ -132,7 +132,9 @@ def generate_obv_operation_suggestion(obv_data, stock_data):
         )
         simple_suggestion = "卖出"
 
-    # 输出详细的操作建议
-    print(detailed_suggestion)
-    print("-----------------------------------------------------------------------------------------------------")
-    return simple_suggestion
+    # 返回包含操作建议和详细建议的字典
+    return {
+        "suggestion": simple_suggestion,
+        "detailed_suggestion": detailed_suggestion
+    }
+

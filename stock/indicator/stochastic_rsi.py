@@ -75,7 +75,7 @@ def generate_stochastic_rsi_operation_suggestion(stochastic_rsi_data):
     stochastic_rsi_data (pd.DataFrame): 包含 %K 和 %D 的 Stochastic RSI 数据
 
     返回:
-    str: 操作建议
+    dict: 包含操作建议和详细建议的字典
     """
     # 获取最新的 %K 和 %D 值
     latest_k = stochastic_rsi_data['%K'].iloc[-1]
@@ -88,26 +88,43 @@ def generate_stochastic_rsi_operation_suggestion(stochastic_rsi_data):
     # 初始化操作建议
     result = '观望'
     if latest_k > overbought and latest_d > overbought:
-        suggestion = f"Stochastic RSI - %K: {latest_k:.2f}, %D: {latest_d:.2f}，市场处于超买区，价格可能过高，存在回调风险。\n📌 建议：卖出或减仓。"
+        suggestion = (
+            f"Stochastic RSI - %K: {latest_k:.2f}, %D: {latest_d:.2f}，市场处于超买区，"
+            "价格可能过高，存在回调风险。\n📌 建议：卖出或减仓。"
+        )
         result = "卖出"
 
     elif latest_k < oversold and latest_d < oversold:
-        suggestion = f"Stochastic RSI - %K: {latest_k:.2f}, %D: {latest_d:.2f}，市场处于超卖区，可能存在反弹机会。\n📌 建议：买入或加仓。"
+        suggestion = (
+            f"Stochastic RSI - %K: {latest_k:.2f}, %D: {latest_d:.2f}，市场处于超卖区，"
+            "可能存在反弹机会。\n📌 建议：买入或加仓。"
+        )
         result = "买入"
 
     elif latest_k > latest_d and latest_k < overbought:
-        suggestion = f"Stochastic RSI - %K: {latest_k:.2f}, %D: {latest_d:.2f}，%K 上穿 %D，显示潜在上涨信号。\n📌 建议：买入信号，准备入场。"
-        result =  "买入"
+        suggestion = (
+            f"Stochastic RSI - %K: {latest_k:.2f}, %D: {latest_d:.2f}，%K 上穿 %D，"
+            "显示潜在上涨信号。\n📌 建议：买入信号，准备入场。"
+        )
+        result = "买入"
 
     elif latest_k < latest_d and latest_k > oversold:
-        suggestion = f"Stochastic RSI - %K: {latest_k:.2f}, %D: {latest_d:.2f}，%K 下穿 %D，显示潜在下跌信号。\n📌 建议：卖出信号，准备减仓。"
-        result  = "卖出"
+        suggestion = (
+            f"Stochastic RSI - %K: {latest_k:.2f}, %D: {latest_d:.2f}，%K 下穿 %D，"
+            "显示潜在下跌信号。\n📌 建议：卖出信号，准备减仓。"
+        )
+        result = "卖出"
 
     else:
-        suggestion = f"Stochastic RSI - %K: {latest_k:.2f}, %D: {latest_d:.2f}，目前指标无明显趋势，市场震荡整理。\n📌 建议：观望，等待更明确信号。"
-        result =  "观望"
+        suggestion = (
+            f"Stochastic RSI - %K: {latest_k:.2f}, %D: {latest_d:.2f}，目前指标无明显趋势，"
+            "市场震荡整理。\n📌 建议：观望，等待更明确信号。"
+        )
+        result = "观望"
 
-    print(suggestion)
-    print("-----------------------------------------------------------------------------------------------------")
+    # 返回包含操作建议和详细建议的字典
+    return {
+        "suggestion": result,
+        "detailed_suggestion": suggestion
+    }
 
-    return result

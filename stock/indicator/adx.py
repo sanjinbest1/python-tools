@@ -75,6 +75,10 @@ def generate_adx_operation_suggestion(adx_data):
             "  - 等待进一步信号确认。"
         )
         suggestion_level = "观望"
+        detailed_suggestion = (
+            "当前ADX值低于弱趋势阈值，市场缺乏明显的方向性，可能处于横盘震荡阶段。"
+            "不建议进行激进操作，应等待市场信号确认，避免在不明朗的市场环境中亏损。"
+        )
     elif ADX_CONFIG['WEAK_TREND_THRESHOLD'] <= latest_adx < ADX_CONFIG['MEDIUM_TREND_THRESHOLD']:
         suggestion_text += (
             "\n\n趋势初步形成，但仍较弱。\n"
@@ -82,6 +86,10 @@ def generate_adx_operation_suggestion(adx_data):
             "  - 保持【观望】或轻仓试探，确认趋势方向再操作。"
         )
         suggestion_level = "观望"
+        detailed_suggestion = (
+            "ADX值在弱趋势与中趋势之间，市场的趋势虽然有所初步形成，但还较为弱势。"
+            "此时应保持观望，或者轻仓试探，待趋势方向进一步确认后再决定操作。"
+        )
     elif ADX_CONFIG['MEDIUM_TREND_THRESHOLD'] <= latest_adx < ADX_CONFIG['STRONG_TREND_THRESHOLD']:
         suggestion_text += (
             "\n\n市场呈现明显趋势，方向明确。\n"
@@ -90,6 +98,10 @@ def generate_adx_operation_suggestion(adx_data):
             "  - 同时注意短期调整风险。"
         )
         suggestion_level = "买入"
+        detailed_suggestion = (
+            "ADX值显示市场趋势较为明显，建议顺势操作，考虑【买入】或加仓。"
+            "但需要注意短期内可能会出现调整，建议设置止损防范风险。"
+        )
     else:
         suggestion_text += (
             "\n\n市场处于强烈单边趋势中，动能旺盛。\n"
@@ -98,7 +110,14 @@ def generate_adx_operation_suggestion(adx_data):
             "  - 建议设置止盈止损，防范突发回调风险。"
         )
         suggestion_level = "买入"
+        detailed_suggestion = (
+            "ADX值超过强趋势阈值，表明市场处于强烈的单边趋势中，动能旺盛。"
+            "此时可以积极顺势操作，考虑【买入】或【持有】。但是要设置止盈止损，防止市场回调。"
+        )
 
-    print(suggestion_text)
-    print("-----------------------------------------------------------------------------------------------------")
-    return suggestion_level
+
+    # 返回建议和详细建议
+    return {
+        "suggestion": suggestion_level,
+        "detailed_suggestion": detailed_suggestion
+    }

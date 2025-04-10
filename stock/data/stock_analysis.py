@@ -3,7 +3,7 @@ from stock.data.data_fetcher import DataFetcher
 
 class StockAnalysis:
 
-    def __init__(self, ticker, start_date, end_date,stock_data_forward_days = 0):
+    def __init__(self, ticker, ticker_name, start_date, end_date,stock_data_forward_days = 0):
         """
         初始化股票分析对象
 
@@ -14,6 +14,7 @@ class StockAnalysis:
         rsi_window (int): RSI计算的窗口期，默认为14
         """
         self.ticker = ticker
+        self.ticker_name = ticker_name
         self.start_date = start_date
         self.end_date = end_date
 

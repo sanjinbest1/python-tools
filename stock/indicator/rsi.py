@@ -87,7 +87,7 @@ def generate_operation_suggestion(rsi_values):
     rsi_values (dict): 含有多个周期 RSI 值的字典（例如 {6: Series, 14: Series, 24: Series}）
 
     返回:
-    str: 操作建议文案
+    dict: 包含操作建议和详细建议的字典
     """
     latest_rsi_values = {window: rsi.iloc[-1] for window, rsi in rsi_values.items()}
     overbought = RSI_CONFIG["overbought"]
@@ -107,12 +107,12 @@ def generate_operation_suggestion(rsi_values):
         sell_count += 1
 
     # 文案构建
-    result = '观望'
     detail = "RSI - 当前各周期 RSI 指数如下：\n"
     for window, value in sorted(latest_rsi_values.items()):
         detail += f"- {window} 日 RSI：{value:.2f}  "
 
     # 操作建议构建
+    result = '观望'
     if buy_count > sell_count:
         suggestion = (
             f"RSI - 综合判断：多个周期 RSI 值均低于超卖区间，且短期与长期走势均显示超卖，"
@@ -133,8 +133,9 @@ def generate_operation_suggestion(rsi_values):
             "市场缺乏明确的超买或超卖信号，📌 建议【观望】。此时宜保持观望，等待市场进一步明朗。"
         )
 
-    # 输出详细的 RSI 信息和操作建议
-    print(detail + "\n" + suggestion)
-    print("-----------------------------------------------------------------------------------------------------")
+    # 返回包含操作建议和详细建议的字典
+    return {
+        "suggestion": result,
+        "detailed_suggestion": suggestion
+    }
 
-    return result

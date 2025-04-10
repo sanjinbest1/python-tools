@@ -24,23 +24,37 @@ def calculate_macd(data):
     return macd,signal_line,hist
 
 
-def generate_macd_signal(macd, signal,hist):
+def generate_macd_signal(macd, signal, hist):
     """
-    根据 MACD 和 signal 生成更详细的交易建议
+    根据 MACD 和 Signal 生成更详细的交易建议
+
+    参数:
+    macd (pd.Series): MACD 指标数据
+    signal (pd.Series): Signal 指标数据
+    hist (pd.Series): MACD 的柱状图数据 (暂时未使用，可根据需要扩展)
+
+    返回:
+    dict: 包含操作建议、解释、策略和风险提示的字典
     """
     if not isinstance(macd, pd.Series): macd = pd.Series(macd)
     if not isinstance(signal, pd.Series): signal = pd.Series(signal)
 
     if len(macd) < 2 or len(signal) < 2:
         print("MACD 或 Signal 数据不足，返回'观望'")
-        return "观望"
+        return {
+            "suggestion": "观望",
+            "detailed_suggestion": "MACD 或 Signal 数据不足，无法生成建议。"
+        }
 
     macd = pd.to_numeric(macd, errors='coerce')
     signal = pd.to_numeric(signal, errors='coerce')
 
     if macd.isna().any() or signal.isna().any():
         print("MACD 或 Signal 存在 NaN 值，返回'观望'")
-        return "观望"
+        return {
+            "suggestion": "观望",
+            "detailed_suggestion": "MACD 或 Signal 存在 NaN 值，无法生成建议。"
+        }
 
     latest_macd = macd.iloc[-1]
     prev_macd = macd.iloc[-2]
@@ -49,11 +63,6 @@ def generate_macd_signal(macd, signal,hist):
 
     buy_signal = latest_macd > latest_signal and prev_macd <= prev_signal
     sell_signal = latest_macd < latest_signal and prev_macd >= prev_signal
-
-    suggestion = "观望"
-    explanation = ""
-    strategy = ""
-    risk = ""
 
     if buy_signal:
         suggestion = "买入"
@@ -66,7 +75,6 @@ def generate_macd_signal(macd, signal,hist):
             "- 若价格回踩黄金交叉位置或MA支撑位失守，应果断止损。\n"
             "- 设置止损线建议为入场价下方 3%-5%。"
         )
-
     elif sell_signal:
         suggestion = "卖出"
         explanation = "MACD 向下跌破 Signal 线，形成“死亡交叉”，通常被视为下跌预警信号。"
@@ -78,7 +86,6 @@ def generate_macd_signal(macd, signal,hist):
             "- 若信号为假突破，可设置回补止损线。\n"
             "- 避免在强支撑位盲目追空。"
         )
-
     elif latest_macd < 0:
         suggestion = "卖出"
         explanation = "MACD 位于零轴下方，表示整体市场偏弱。"
@@ -90,7 +97,6 @@ def generate_macd_signal(macd, signal,hist):
             "- 空头趋势中反弹较弱，建议轻仓谨慎操作。\n"
             "- 止损线应设置在前期低点或5%以内。"
         )
-
     else:
         suggestion = "观望"
         explanation = "MACD 虽然在零轴上方，但未出现明显交叉信号。趋势尚不明朗。"
@@ -103,13 +109,12 @@ def generate_macd_signal(macd, signal,hist):
             "- 注意回调信号，设置动态止盈。"
         )
 
-    print(f"信号解释：{explanation}\n"
-          f"策略建议：\n{strategy}\n"
-          f"风险提示：\n{risk}\n"
-          f"📌 操作建议：{suggestion}")
-    print("-----------------------------------------------------------------------------------------------------")
+    # 返回包含操作建议、解释、策略和风险提示的字典
+    return {
+        "suggestion": suggestion,
+        "detailed_suggestion": f"信号解释：{explanation}\n策略建议：\n{strategy}\n风险提示：\n{risk}"
+    }
 
-    return suggestion
 
 
 
