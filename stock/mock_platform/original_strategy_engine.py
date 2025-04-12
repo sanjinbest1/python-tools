@@ -1,5 +1,7 @@
 import datetime
 from datetime import timedelta
+from typing import Sequence
+
 from stock.data.stock_analysis import StockAnalysis
 from stock.indicator.rsi import *
 from stock.indicator.macd import *
@@ -13,18 +15,25 @@ from stock.indicator.keltner_channel import *
 import json
 import ast
 
+'''
+1. 计算指标的原始值
+2. 将原始值映射为 [0,1] 区间的评分
+3. 根据评分和权重计算最终的综合评分
+'''
+
 # ==== 权重表（可动态调整） ====
 indicator_weights = {
-    'rsi': 0.2,
-    'macd': 0.15,
-    'bollinger': 0.1,
-    'adx': 0.2,
-    'atr': 0.05,
-    'obv': 0.1,
-    'vwap': 0.1,
-    'stochastic_rsi': 0.05,
-    'keltner': 0.05
+    'rsi': 0.15,  # RSI 保持较高，但略微降低
+    'macd': 0.2,  # MACD 作为趋势指标的重要性较高
+    'bollinger': 0.15,  # 增加布林带的权重，提升波动性指标的影响力
+    'adx': 0.2,  # ADX 作为趋势强度指标继续保持高权重
+    'atr': 0.1,  # ATR 提高至 0.1，增强波动性对策略的影响
+    'obv': 0.1,  # OBV 作为成交量指标适当增加权重
+    'vwap': 0.05,  # VWAP 权重保持不变，辅助判断市场走势
+    'stochastic_rsi': 0.05,  # Stochastic RSI 作为辅助动量指标，保持较低权重
+    'keltner': 0.1  # Keltner 提高至 0.1，增强波动性判断
 }
+
 
 # ==== Step 1: 指标计算 ====
 def calculate_indicators_raw_and_suggestions(stock_data):
@@ -135,7 +144,7 @@ def score_indicators_from_raw(indicators_raw, market_type="trend"):
     obv = indicators_raw.get('obv')
     if obv is not None and not obv.empty and len(obv) >= 5:
         slope = np.polyfit(range(5), obv[-5:], 1)[0]
-        scores['obv'] = 1 / (1 + np.exp(-slope * 10))
+        scores['obv'] = 1 / (1 + np.exp(-np.clip(slope, -500, 500)))
 
     # VWAP评分（价格低于VWAP → 低估）
     vwap = indicators_raw.get('vwap')
@@ -185,21 +194,39 @@ def score_indicators_from_raw(indicators_raw, market_type="trend"):
 
     return scores
 
-def generate_operation_suggestion_from_scores(indicator_scores, indicator_weights):
+def generate_operation_suggestion_from_scores(indicator_scores, indicator_weights, data):
     """
     加权融合评分，生成综合建议，并提供不同持仓情况下的具体操作建议。
     """
     weighted_sum = 0
     total_weight = 0
 
+    # 遍历每个指标及其得分
     for name, score in indicator_scores.items():
         weight = indicator_weights.get(name, 0)
 
-        # 如果 score 是字典，输出警告并尝试提取数值
-        if isinstance(score, dict):
-            print(f"Warning: Score for {name} is a dictionary. Attempting to extract a value.")
+        # 打印每个指标的得分和权重，帮助调试
+        print(f"Processing {name} - Score: {score}, Weight: {weight}")
+
+        # VWAP 特殊处理：如果是 Series，取最后一个值与当前价格比较
+        if 'vwap' in name.lower() and isinstance(score, pd.Series):
+            try:
+                vwap_value = score.dropna().iloc[-1]
+                current_price = data['close'].iloc[-1]
+                if vwap_value != 0:
+                    diff_ratio = (current_price - vwap_value) / vwap_value
+                    # 归一化偏离度：转换为 0~1 分数
+                    score = 0.5 + max(-0.5, min(0.5, diff_ratio * 5))
+                    score = round(score, 3)
+                else:
+                    score = 0.5
+            except Exception as e:
+                print(f"❌ VWAP 序列处理异常: {e}")
+                score = 0.5  # 给中性评分
+
+        elif isinstance(score, dict):
+            print(f"⚠️ Warning: {name} 的 score 是 dict，尝试提取 'value'")
             score = score.get('value', 0)
-            print(f"Extracted score for {name}: {score}")
 
         # 确保 score 是数值类型
         if isinstance(score, (int, float)):
@@ -210,6 +237,7 @@ def generate_operation_suggestion_from_scores(indicator_scores, indicator_weight
 
     # 计算最终分数
     final_score = weighted_sum / total_weight if total_weight > 0 else 0.5
+    print(f"Final weighted score: {final_score}")
 
     # 建议映射规则
     if final_score >= 0.8:
@@ -221,6 +249,99 @@ def generate_operation_suggestion_from_scores(indicator_scores, indicator_weight
     elif final_score >= 0.35:
         suggestion = '观望'
     elif final_score >= 0.2:
+        suggestion = '卖出'
+    else:
+        suggestion = '强烈卖出'
+
+    # 打印最终的操作建议
+    print(f"Final suggestion: {suggestion}")
+
+    # 仓位建议（根据评分生成不同仓位的建议）
+    if suggestion == "强烈买入":
+        operation_detail = "建议大幅增仓，仓位可接近 100%。"
+        stop_loss = "建议设置止损位于当前价格下方 5% 左右。"
+        take_profit = "建议设置止盈位于当前价格上方 15% 左右。"
+    elif suggestion == "买入":
+        operation_detail = "可以适度增仓，建议将当前仓位提升至 70%。"
+        stop_loss = "建议设置止损位于当前价格下方 5% 左右。"
+        take_profit = "建议设置止盈位于当前价格上方 10% 左右。"
+    elif suggestion == "谨慎买入":
+        operation_detail = "建议适度增仓，仓位控制在 30% 左右。"
+        stop_loss = "建议设置止损位于当前价格下方 5% 左右。"
+        take_profit = "建议设置止盈位于当前价格上方 8% 左右。"
+    elif suggestion == "观望":
+        operation_detail = "当前无明确的操作建议，保持现有仓位。"
+        stop_loss = "无止损建议，维持现有仓位。"
+        take_profit = "无止盈建议，维持现有仓位。"
+    elif suggestion == "卖出":
+        operation_detail = "建议逐步减仓，考虑将仓位减至 20% 以下。"
+        stop_loss = "建议设置止损位于当前价格上方 5% 左右。"
+        take_profit = "建议设置止盈位于当前价格下方 10% 左右。"
+    else:  # 强烈卖出
+        operation_detail = "建议迅速减仓，仓位控制在 10% 以下。"
+        stop_loss = "建议设置止损位于当前价格上方 5% 左右。"
+        take_profit = "建议设置止盈位于当前价格下方 15% 左右。"
+
+    # 返回操作建议
+    return {
+        'final_score': round(final_score, 3),
+        'suggestion': suggestion,
+        'reason': f"融合评分为 {round(final_score, 3)}，建议为 {suggestion}",
+        'operation_detail': operation_detail,
+        'stop_loss': stop_loss,
+        'take_profit': take_profit
+    }
+
+def generate_operation_suggestion_from_scores(indicator_scores, indicator_weights, data):
+    """
+    加权融合评分，生成综合建议，并提供不同持仓情况下的具体操作建议。
+    """
+    weighted_sum = 0
+    total_weight = 0
+
+    for name, score in indicator_scores.items():
+        weight = indicator_weights.get(name, 0)
+
+        # VWAP 特殊处理：如果是 Series，取最后一个值与当前价格比较
+        if 'vwap' in name.lower() and isinstance(score, pd.Series):
+            try:
+                vwap_value = score.dropna().iloc[-1]
+                current_price = data['close'].iloc[-1]
+                if vwap_value != 0:
+                    diff_ratio = (current_price - vwap_value) / vwap_value
+                    # 归一化偏离度：转换为 0~1 分数
+                    score = 0.5 + max(-0.5, min(0.5, diff_ratio * 5))
+                    score = round(score, 3)
+                else:
+                    score = 0.5
+            except Exception as e:
+                print(f"❌ VWAP 序列处理异常: {e}")
+                score = 0.5  # 给中性评分
+
+        elif isinstance(score, dict):
+            print(f"⚠️ Warning: {name} 的 score 是 dict，尝试提取 'value'")
+            score = score.get('value', 0)
+
+        # 确保 score 是数值类型
+        if isinstance(score, (int, float)):
+            weighted_sum += score * weight
+            total_weight += weight
+        else:
+            print(f"Error: Indicator '{name}' score is not a valid number: {score}")
+
+    # 计算最终分数
+    final_score = weighted_sum / total_weight if total_weight > 0 else 0.5
+
+    # 调整映射规则，避免过于宽松的买入条件
+    if final_score >= 0.9:
+        suggestion = '强烈买入'
+    elif final_score >= 0.75:
+        suggestion = '买入'
+    elif final_score >= 0.6:
+        suggestion = '谨慎买入'
+    elif final_score >= 0.4:
+        suggestion = '观望'
+    elif final_score >= 0.25:
         suggestion = '卖出'
     else:
         suggestion = '强烈卖出'
@@ -250,7 +371,7 @@ def generate_operation_suggestion_from_scores(indicator_scores, indicator_weight
         operation_detail = "建议迅速减仓，仓位控制在 10% 以下。"
         stop_loss = "建议设置止损位于当前价格上方 5% 左右。"
         take_profit = "建议设置止盈位于当前价格下方 15% 左右。"
-
+    print(suggestion)
     return {
         'final_score': round(final_score, 3),
         'suggestion': suggestion,
@@ -259,6 +380,8 @@ def generate_operation_suggestion_from_scores(indicator_scores, indicator_weight
         'stop_loss': stop_loss,
         'take_profit': take_profit
     }
+
+
 
 def export_analysis_to_markdown(all_results, output_path):
     with open(output_path, 'w', encoding='utf-8') as f:
@@ -269,18 +392,22 @@ def export_analysis_to_markdown(all_results, output_path):
             stock_name = result['ticker_name']
             final_suggestion = result.get('final_suggestion', '无')
             final_score = result.get('final_score', '无评分')
-            reason = result.get('reason', '')  # 获取综合建议说明
-            operation_detail = result.get('operation_detail', '')  # 获取操作建议
-            stop_loss = result.get('stop_loss', '')  # 获取止损建议
-            take_profit = result.get('take_profit', '')  # 获取止盈建议
+            reason = result.get('reason', '无')
+            operation_detail = result.get('operation_detail', '无')
+            stop_loss = result.get('stop_loss', '无')
+            take_profit = result.get('take_profit', '无')
+            support = result.get('support', '无')
+            resistance = result.get('resistance', '无')
 
             # 写入股票信息与综合建议
             f.write(f"## {stock_name} ({stock_code})\n\n")
-            f.write(f"### 综合建议：{final_suggestion}（评分：{round(final_score, 2)}）\n\n")
+            f.write(f"### 综合建议：{final_suggestion}（评分：{final_score}）\n\n")
             f.write(f"### 综合建议说明：{reason}\n\n")
             f.write(f"### 操作建议：{operation_detail}\n\n")
             f.write(f"### 止损建议：{stop_loss}\n\n")
             f.write(f"### 止盈建议：{take_profit}\n\n")
+            f.write(f"### 支撑位：{support}\n\n")
+            f.write(f"### 压力位：{resistance}\n\n")
 
             f.write("### 各指标建议与解释：\n\n")
 
@@ -296,6 +423,41 @@ def export_analysis_to_markdown(all_results, output_path):
                     f.write(f"- 说明：{explanation}\n\n")
 
             f.write("---\n\n")
+
+
+def calculate_support_resistance(data, window=5, buffer=0.02):
+    """
+    计算支撑位和压力位（基于最近的历史高低点，并增加 buffer 修正）
+
+    :param data: 股票的历史数据（DataFrame），需要包含 'close' 列
+    :param window: 用于计算支撑和压力的窗口期（默认是5天）
+    :param buffer: 用于调整压力位和支撑位的偏差值（防止与当前股价完全重合）
+    :return: 支撑位和压力位的字典
+    """
+    # 如果 data 是一个切片，可以通过 .copy() 显式创建副本
+    data = data.copy()
+
+    # 然后进行修改
+    data.loc[:, 'rolling_high'] = data['close'].rolling(window).max()
+    data.loc[:, 'rolling_low'] = data['close'].rolling(window).min()
+
+# 获取当前支撑位（最近5天最低价）和压力位（最近5天最高价）
+    support_level = data['rolling_low'].iloc[-1]
+    resistance_level = data['rolling_high'].iloc[-1]
+
+    # 如果当前股价接近历史高点，加入 buffer 调整压力位
+    current_price = data['close'].iloc[-1]
+    if current_price >= resistance_level:
+        resistance_level = current_price * (1 + buffer)
+
+    # 如果当前股价接近历史低点，加入 buffer 调整支撑位
+    if current_price <= support_level:
+        support_level = current_price * (1 - buffer)
+
+    return {
+        'support': support_level,
+        'resistance': resistance_level
+    }
 
 
 def analyze(stock, stock_data):
@@ -322,7 +484,10 @@ def analyze(stock, stock_data):
     suggestions = {key: indicators[key].get('suggestion', '无建议') for key in indicators}
 
     indicator_scores = score_indicators_from_raw(raw_values)
-    operation_suggestion = generate_operation_suggestion_from_scores(indicator_scores, dynamic_indicator_weights)
+    operation_suggestion = generate_operation_suggestion_from_scores(indicator_scores, dynamic_indicator_weights,stock_data)
+
+    # 计算支撑位和压力位
+    support_resistance = calculate_support_resistance(stock_data)
 
     # 返回操作建议和其他相关数据
     final_score = operation_suggestion['final_score']
@@ -342,10 +507,14 @@ def analyze(stock, stock_data):
         'operation_detail': operation_detail,
         'stop_loss': stop_loss,
         'take_profit': take_profit,
+        "support": support_resistance["support"],  # 支撑位
+        "resistance": support_resistance["resistance"],  # 压力位
         'raw_values': raw_values,  # 添加原始值
         'explanations': explanations,  # 添加解释
         'suggestions': suggestions  # 添加建议
     }
+
+
 
     return analysis_result
 
@@ -448,6 +617,8 @@ def batch_analysis_stocks(stocks, start_date, end_date):
             "operation_detail": analyze_result["operation_detail"],
             "stop_loss": analyze_result["stop_loss"],
             "take_profit": analyze_result["take_profit"],
+            "support": analyze_result["support"],  # 支撑位
+            "resistance": analyze_result["resistance"],  # 压力位
         }
 
         # 将各指标建议和解释合并进入结果中
@@ -470,72 +641,7 @@ def from_json():
     "pid": 2,
     "category": 1,
     "stocks": [
-      {
-        "symbol": "SH603236",
-        "name": "移远通信",
-        "type": 11,
-        "remark": "",
-        "exchange": "SH",
-        "created": 1744248566504,
-        "watched": 1744248566504,
-        "category": 1,
-        "marketplace": "CN"
-      },
-      {
-        "symbol": "SZ300377",
-        "name": "赢时胜",
-        "type": 11,
-        "remark": "",
-        "exchange": "SZ",
-        "created": 1744248540608,
-        "watched": 1744248540608,
-        "category": 1,
-        "marketplace": "CN"
-      },
-      {
-        "symbol": "00241",
-        "name": "阿里健康",
-        "type": 30,
-        "remark": "",
-        "exchange": "HK",
-        "created": 1744248529498,
-        "watched": 1744248529498,
-        "category": 1,
-        "marketplace": "HK"
-      },
-      {
-        "symbol": "01810",
-        "name": "小米集团-W",
-        "type": 30,
-        "remark": "",
-        "exchange": "HK",
-        "created": 1744248524651,
-        "watched": 1744248524651,
-        "category": 1,
-        "marketplace": "HK"
-      },
-      {
-        "symbol": "SZ002657",
-        "name": "中科金财",
-        "type": 11,
-        "remark": "",
-        "exchange": "SZ",
-        "created": 1744248519559,
-        "watched": 1744248519559,
-        "category": 1,
-        "marketplace": "CN"
-      },
-      {
-        "symbol": "SH600446",
-        "name": "金证股份",
-        "type": 11,
-        "remark": "",
-        "exchange": "SH",
-        "created": 1744248514335,
-        "watched": 1744248514335,
-        "category": 1,
-        "marketplace": "CN"
-      },
+      
       {
         "symbol": "SH600570",
         "name": "恒生电子",

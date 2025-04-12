@@ -13,6 +13,13 @@ from stock.indicator.keltner_channel import *
 import json
 import ast
 
+'''
+1. 计算每个指标建议
+2. 根据指标建议和权重计算加权建议
+3. 根据市场类型调整权重
+4. 根据加权建议和策略组合判断最终建议
+'''
+
 # ==== 权重表（可动态调整） ====
 indicator_weights = {
     'rsi': {'买入': 0.05, '卖出': 0.05, '观望': 0.025},
