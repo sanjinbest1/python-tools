@@ -331,7 +331,7 @@ def batch_analysis_stocks(stocks, start_date, end_date):
             "analysis": analyze_result
         })
 
-        return analysis_results
+    return analysis_results
 
 def export_analysis_to_console(all_results):
     # 遍历每个股票的分析结果
@@ -371,8 +371,94 @@ def batch_analysis_stocks_console(stocks_infos,start_date,end_date):
     analysis_results = batch_analysis_stocks(stocks_infos, start_date, end_date)
     export_analysis_to_console(analysis_results)
 
-def from_json(json_data):
-    json_data = '''{"data":{"pid":1,"category":1,"stocks":[{"symbol":"SH600054","name":"黄山旅游","type":11,"remark":"","exchange":"SH","created":1744205721749,"watched":1744205721749,"category":1,"marketplace":"CN"},{"symbol":"SZ000524","name":"岭南控股","type":11,"remark":"","exchange":"SZ","created":1744205721749,"watched":1744205721749,"category":1,"marketplace":"CN"},{"symbol":"SZ000796","name":"凯撒旅业","type":11,"remark":"","exchange":"SZ","created":1744205721749,"watched":1744205721749,"category":1,"marketplace":"CN"},{"symbol":"SZ000888","name":"峨眉山A","type":11,"remark":"","exchange":"SZ","created":1744205721749,"watched":1744205721749,"category":1,"marketplace":"CN"},{"symbol":"SZ000978","name":"桂林旅游","type":11,"remark":"","exchange":"SZ","created":1744205721749,"watched":1744205721749,"category":1,"marketplace":"CN"},{"symbol":"SZ002033","name":"丽江股份","type":11,"remark":"","exchange":"SZ","created":1744205721749,"watched":1744205721749,"category":1,"marketplace":"CN"},{"symbol":"SZ002059","name":"云南旅游","type":11,"remark":"","exchange":"SZ","created":1744205721749,"watched":1744205721749,"category":1,"marketplace":"CN"},{"symbol":"SZ002159","name":"三特索道","type":11,"remark":"","exchange":"SZ","created":1744205721749,"watched":1744205721749,"category":1,"marketplace":"CN"},{"symbol":"SZ002707","name":"众信旅游","type":11,"remark":"","exchange":"SZ","created":1744205721749,"watched":1744205721749,"category":1,"marketplace":"CN"},{"symbol":"SZ300144","name":"宋城演艺","type":11,"remark":"","exchange":"SZ","created":1744205721749,"watched":1744205721749,"category":1,"marketplace":"CN"},{"symbol":"SZ000430","name":"张家界","type":11,"remark":"","exchange":"SZ","created":1744205721749,"watched":1744205721749,"category":1,"marketplace":"CN"},{"symbol":"SH900942","name":"黄山B股","type":11,"remark":"","exchange":"SH","created":1744205721749,"watched":1744205721749,"category":1,"marketplace":"CN"},{"symbol":"SH600138","name":"中青旅","type":11,"remark":"","exchange":"SH","created":1744205721749,"watched":1744205721749,"category":1,"marketplace":"CN"},{"symbol":"SH600576","name":"祥源文旅","type":11,"remark":"","exchange":"SH","created":1744205721749,"watched":1744205721749,"category":1,"marketplace":"CN"},{"symbol":"SH600593","name":"大连圣亚","type":11,"remark":"","exchange":"SH","created":1744205721749,"watched":1744205721749,"category":1,"marketplace":"CN"},{"symbol":"SH600706","name":"曲江文旅","type":11,"remark":"","exchange":"SH","created":1744205721749,"watched":1744205721749,"category":1,"marketplace":"CN"},{"symbol":"SH600749","name":"西藏旅游","type":11,"remark":"","exchange":"SH","created":1744205721749,"watched":1744205721749,"category":1,"marketplace":"CN"},{"symbol":"SH603099","name":"长白山","type":11,"remark":"","exchange":"SH","created":1744205721749,"watched":1744205721749,"category":1,"marketplace":"CN"},{"symbol":"SH603136","name":"天目湖","type":11,"remark":"","exchange":"SH","created":1744205721749,"watched":1744205721749,"category":1,"marketplace":"CN"},{"symbol":"SH603199","name":"九华旅游","type":11,"remark":"","exchange":"SH","created":1744205721749,"watched":1744205721749,"category":1,"marketplace":"CN"},{"symbol":"SH900929","name":"锦旅B股","type":11,"remark":"","exchange":"SH","created":1744205721749,"watched":1744205721749,"category":1,"marketplace":"CN"},{"symbol":"SZ300859","name":"西域旅游","type":11,"remark":"","exchange":"SZ","created":1744205721749,"watched":1744205721749,"category":1,"marketplace":"CN"}]},"error_code":0,"error_description":""}'''
+def from_json():
+    json_data = '''{
+  "data": {
+    "pid": 2,
+    "category": 1,
+    "stocks": [
+      {
+        "symbol": "SH603236",
+        "name": "移远通信",
+        "type": 11,
+        "remark": "",
+        "exchange": "SH",
+        "created": 1744248566504,
+        "watched": 1744248566504,
+        "category": 1,
+        "marketplace": "CN"
+      },
+      {
+        "symbol": "SZ300377",
+        "name": "赢时胜",
+        "type": 11,
+        "remark": "",
+        "exchange": "SZ",
+        "created": 1744248540608,
+        "watched": 1744248540608,
+        "category": 1,
+        "marketplace": "CN"
+      },
+      {
+        "symbol": "00241",
+        "name": "阿里健康",
+        "type": 30,
+        "remark": "",
+        "exchange": "HK",
+        "created": 1744248529498,
+        "watched": 1744248529498,
+        "category": 1,
+        "marketplace": "HK"
+      },
+      {
+        "symbol": "01810",
+        "name": "小米集团-W",
+        "type": 30,
+        "remark": "",
+        "exchange": "HK",
+        "created": 1744248524651,
+        "watched": 1744248524651,
+        "category": 1,
+        "marketplace": "HK"
+      },
+      {
+        "symbol": "SZ002657",
+        "name": "中科金财",
+        "type": 11,
+        "remark": "",
+        "exchange": "SZ",
+        "created": 1744248519559,
+        "watched": 1744248519559,
+        "category": 1,
+        "marketplace": "CN"
+      },
+      {
+        "symbol": "SH600446",
+        "name": "金证股份",
+        "type": 11,
+        "remark": "",
+        "exchange": "SH",
+        "created": 1744248514335,
+        "watched": 1744248514335,
+        "category": 1,
+        "marketplace": "CN"
+      },
+      {
+        "symbol": "SH600570",
+        "name": "恒生电子",
+        "type": 11,
+        "remark": "",
+        "exchange": "SH",
+        "created": 1744248509501,
+        "watched": 1744248509501,
+        "category": 1,
+        "marketplace": "CN"
+      }
+    ]
+  },
+  "error_code": 0,
+  "error_description": ""
+}'''
     # 将JSON数据解析为Python字典
     data = json.loads(json_data)
 
@@ -392,13 +478,15 @@ def from_json(json_data):
 
 if __name__ == '__main__':
     # 设定结束日期为当前日期
-    end_date = '2025-04-10'
+    end_date = '2025-04-11'
 
     # 计算开始日期，设为一年之前
     start_date = (datetime.datetime.strptime(end_date, "%Y-%m-%d") - timedelta(days=365)).strftime("%Y-%m-%d")
 
     # 将字符串转换为Python对象
-    stocks_infos = """[{'symbol':'sh.600570','name':'恒生电子'}]"""
-    stocks_infos = ast.literal_eval(stocks_infos)  # 安全地将字符串转换为list
+    # stocks_infos = """[{'symbol':'sh.600570','name':'恒生电子'}]"""
+    # stocks_infos = ast.literal_eval(stocks_infos)  # 安全地将字符串转换为list
 
-    batch_analysis_stocks_console(stocks_infos,start_date,end_date)
+    stocks_infos = from_json()
+
+    batch_analysis_stocks_report(stocks_infos,start_date,end_date)
